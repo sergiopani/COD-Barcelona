@@ -175,7 +175,7 @@ function planter(set: BatchSet, f: Frame, rng: Rng, x: number, z: number): ColBo
 }
 
 /** Genera todo el mobiliario y vehículos y registra sus colliders. */
-export function buildProps(set: BatchSet, props: Prop[], collisions: CollisionManager, seed = 7): void {
+export function buildProps(set: BatchSet, props: Prop[], collisions: CollisionManager, seed = 7, proceduralTrees = false): void {
   const rng = new Rng(seed);
   for (const p of props) {
     const f = new Frame(p.x, 0.14, p.z, p.ux, p.uz, p.uz, -p.ux);
@@ -194,7 +194,8 @@ export function buildProps(set: BatchSet, props: Prop[], collisions: CollisionMa
         col = moto(set, f, rng);
         break;
       case "tree":
-        col = tree(set, f, rng, p.x, p.z);
+        // las palmeras se dibujan aparte (PalmTrees, thin instances); aquí solo el collider del tronco
+        col = proceduralTrees ? tree(set, f, rng, p.x, p.z) : { sx: 0.5, sy: 4, sz: 0.5 };
         break;
       case "lamp":
         col = lamp(set, f, p.x, p.z);

@@ -32,7 +32,9 @@ Otros comandos: `npm run build` (typecheck + build de producción en `dist/`), `
 
 ## La Sagrada Família (modelo 3D)
 
-Coloca tu modelo en `public/assets/buildings/sagrada-familia.glb` y ajústalo en
+El modelo (`public/assets/buildings/sagrada-familia.glb`, ~34 MB, 930 k triángulos, texturas 4096² embebidas) está
+configurado con `rotationYDeg: -90` (fachada de la Gloria al sur) y `scale: 42` (≈ 101 × 124 × 98 m, cabe en la manzana).
+El archivo está en `.gitignore` por su tamaño. Ajústalo en
 `public/assets/buildings/sagrada-familia.config.json` (posición, rotación, escala, altura objetivo, alineado al suelo,
 colliders). Instrucciones completas en `public/assets/buildings/README.txt`. Sin el archivo, el juego muestra un error
 claro en la consola y usa una **basílica provisional procedural** (solo volumetría esquemática, no es fiel).
@@ -48,7 +50,8 @@ src/game/world/mapLayout.ts       datos puros: cadenas de fachada, cruces, pasos
 src/game/world/BarcelonaMap.ts    orquesta la construcción del mapa
 src/game/world/StreetGenerator.ts calzada, aceras, bordillos, cebras, marcas viales
 src/game/world/BuildingGenerator.ts + FacadeModules.ts   edificios modulares del Eixample
-src/game/world/StreetFurniture.ts farolas, árboles, bancos, semáforos, señales, coches, motos
+src/game/world/StreetFurniture.ts farolas, bancos, semáforos, señales, coches, motos
+src/game/world/PalmTrees.ts       palmeras desde public/assets/props/palm-tree.glb (thin instances)
 src/game/world/SagradaFamilia*.ts carga del GLB + basílica provisional
 src/game/world/CollisionManager.ts colliders invisibles (geometría física separada de la visual)
 src/game/world/Materials.ts       materiales PBR con texturas procedurales

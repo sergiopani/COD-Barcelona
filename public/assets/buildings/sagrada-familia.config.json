@@ -1,7 +1,7 @@
 {
   "position": [0, 0.14, 0],
-  "rotationYDeg": 0,
-  "scale": 1,
+  "rotationYDeg": -90,
+  "scale": 42,
   "targetHeight": null,
   "centerXZ": true,
   "alignToGround": true,

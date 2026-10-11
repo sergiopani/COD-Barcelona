@@ -5,6 +5,7 @@ import { CollisionManager } from "./CollisionManager";
 import type { LightingRig } from "./Lighting";
 import { createMaterials, type MatKey, type MaterialSet } from "./Materials";
 import { BatchSet, F, Frame, type RGBA } from "./MeshBatch";
+import { buildPalms, type PalmSet } from "./PalmTrees";
 import { loadSagradaFamilia, type SagradaResult } from "./SagradaFamiliaLoader";
 import { buildProps } from "./StreetFurniture";
 import { buildStreets } from "./StreetGenerator";
@@ -30,6 +31,7 @@ export class BarcelonaMap {
   readonly spawns: Spawn[] = spawns;
   materials!: MaterialSet;
   sagrada!: SagradaResult;
+  private palms: PalmSet | null = null;
   stats!: MapStats;
   readonly warnings: string[] = [];
   private readonly meshes: Mesh[] = [];
@@ -71,8 +73,16 @@ export class BarcelonaMap {
     for (const seg of centerChain.segs) this.collisions.addSegmentWall(seg, 0.9, 8, "fence");
 
     await tick("Colocando mobiliario y vehículos…");
+    this.palms = await buildPalms(
+      this.scene,
+      props.filter((p) => p.kind === "tree").map((p) => ({ x: p.x, y: STREET.curbHeight, z: p.z })),
+    );
+    if (this.palms) {
+      for (const m of this.palms.meshes) this.lighting.addShadowCaster(m);
+      this.meshes.push(...this.palms.meshes);
+    }
     const pset = new BatchSet(mats.tile);
-    buildProps(pset, props, this.collisions);
+    buildProps(pset, props, this.collisions, 7, !this.palms);
     vertices += pset.totalVertices;
     this.addBuilt(pset.build(this.scene, "props"), true);
 
@@ -152,6 +162,7 @@ export class BarcelonaMap {
 
   dispose(): void {
     this.sagrada?.dispose();
+    this.palms?.dispose();
     this.meshes.forEach((m) => m.dispose());
     this.materials?.dispose();
   }
