@@ -3,10 +3,14 @@ import { PLAYER } from "./config";
 import { GraphicsSettings, PROFILES, type ProfileName } from "./graphics/GraphicsSettings";
 import { InputManager } from "./player/InputManager";
 import { PlayerController } from "./player/PlayerController";
+import { AudioManager } from "./audio/AudioManager";
+import { CombatSystem } from "./combat/CombatSystem";
+import { Hud } from "./ui/Hud";
 import { MenuScreen } from "./ui/MenuScreen";
 import { BarcelonaMap } from "./world/BarcelonaMap";
 import { setupLighting, type LightingRig } from "./world/Lighting";
 import { runCollisionSelfTest } from "./debug/selfTest";
+import { runCombatTest } from "./debug/combatTest";
 
 /**
  * Motor, escena, bucle principal y estados (cargando → menú → jugando → pausa).
@@ -19,6 +23,9 @@ export class Game {
   private player!: PlayerController;
   private map!: BarcelonaMap;
   private lighting!: LightingRig;
+  private combat!: CombatSystem;
+  private readonly audio = new AudioManager();
+  private readonly hud = new Hud();
   private started = false;
   private fpsTimer = 0;
   private slowTime = 0;
@@ -41,12 +48,18 @@ export class Game {
     this.player = new PlayerController(this.scene, camera, this.input);
 
     this.map = new BarcelonaMap(this.scene, this.lighting);
-    const steps = 8;
+    const steps = 9;
     let n = 0;
     this.menu.setProgress("Preparando entorno e iluminación…", 0.02);
     const envInfo = await this.lighting.env.ready;
     console.info(`[Entorno] IBL: ${envInfo.source}`);
     await this.map.build((label) => this.menu.setProgress(label, ++n / (steps + 1)));
+
+    // Combate: arma (GLB), balística, bots-objetivo, salud y HUD
+    this.menu.setProgress("Cargando el arma…", 0.95);
+    this.combat = new CombatSystem(this.scene, this.map, this.player, this.input, this.audio, this.hud, this.lighting);
+    await this.combat.init();
+    this.combat.setBasilicaProxy();
 
     // Perfil gráfico y asfalto mojado (aplican opciones reales de renderizado)
     this.applyGraphics();
@@ -55,6 +68,7 @@ export class Game {
       this.applyGraphics();
     });
 
+    this.player.safety = this.map.collisions;
     const s = this.map.spawnPosition(0);
     this.player.teleport(s.position.x, s.position.y, s.position.z, s.yaw);
 
@@ -68,6 +82,7 @@ export class Game {
     this.scene.executeWhenReady(() => {
       this.menu.ready(() => {
         this.started = true;
+        this.audio.resume(); // el AudioContext solo puede arrancar tras un gesto del usuario
         this.menu.setNote("");
         void this.input.requestLock();
       });
@@ -82,7 +97,11 @@ export class Game {
 
   private frame(): void {
     const dt = Math.min(this.engine.getDeltaTime() / 1000, 0.05);
+    // El juego (bots, arma, salud) solo avanza con el cursor bloqueado; en pausa queda congelado.
+    const active = this.input.locked;
     this.player.update(dt);
+    this.combat.update(dt, active);
+    this.combat.refreshHud();
     // caída fuera del mundo → reaparición
     if (this.player.position.y < PLAYER.killPlaneY) {
       const s = this.map.spawnPosition(0);
@@ -131,7 +150,7 @@ export class Game {
   }
 
   private exposeDebug(): void {
-    const g = {
+    const g: Record<string, any> = {
       scene: this.scene,
       engine: this.engine,
       player: this.player,
@@ -139,9 +158,28 @@ export class Game {
       map: this.map,
       lighting: this.lighting,
       game: this,
+      combat: this.combat,
+      hud: this.hud,
       stats: () => ({ ...this.map.stats, fps: this.engine.getFps(), drawCalls: this.instrumentation.drawCallsCounter.current, frameMs: this.instrumentation.frameTimeCounter.average }),
       tp: (x: number, z: number, yawDeg = 0, y = 0.05) => this.player.teleport(x, y, z, (yawDeg * Math.PI) / 180),
       selfTest: () => runCollisionSelfTest(this.scene, this.player, this.map),
+      combatTest: () =>
+        runCombatTest(
+          this.combat,
+          this.player,
+          (n) => g.frames(n),
+          (v) => ((this.input as unknown as { lockedState: boolean }).lockedState = v),
+        ),
+      /** Simula n fotogramas completos a mano (útil cuando la pestaña está oculta y no hay requestAnimationFrame). */
+      frames: (n: number, dt = 1 / 60) => {
+        for (let i = 0; i < n; i++) {
+          this.player.update(dt);
+          this.combat.update(dt, this.input.locked);
+          this.combat.refreshHud();
+          this.scene.render();
+          this.input.endFrame();
+        }
+      },
       /** Entra en juego sin Pointer Lock (útil para capturas y pruebas automáticas). */
       hideMenu: () => this.menu.hide(),
     };

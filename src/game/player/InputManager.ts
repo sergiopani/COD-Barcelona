@@ -8,6 +8,8 @@ export class InputManager {
   private mouseDX = 0;
   private mouseDY = 0;
   private buttons = 0;
+  private readonly mousePressed = new Set<number>();
+  private wheel = 0;
   private lockedState = false;
 
   onLockChange: (locked: boolean) => void = () => {};
@@ -31,8 +33,18 @@ export class InputManager {
       this.mouseDY += e.movementY;
     });
     document.addEventListener("mousedown", (e) => {
-      if (this.lockedState) this.buttons |= 1 << e.button;
+      if (this.lockedState) {
+        this.buttons |= 1 << e.button;
+        this.mousePressed.add(e.button);
+      }
     });
+    window.addEventListener("wheel", (e) => {
+      if (this.lockedState) {
+        this.wheel += Math.sign(e.deltaY);
+        e.preventDefault();
+      }
+    }, { passive: false });
+    this.canvas.addEventListener("contextmenu", (e) => e.preventDefault());
     document.addEventListener("mouseup", (e) => {
       this.buttons &= ~(1 << e.button);
     });
@@ -78,6 +90,18 @@ export class InputManager {
     return this.pressedThisFrame.has(code);
   }
 
+  /** True solo en el fotograma en que se pulsó el botón (0 izq., 1 rueda, 2 der.). */
+  wasMousePressed(button: number): boolean {
+    return this.mousePressed.has(button);
+  }
+
+  /** Desplazamiento acumulado de la rueda desde la última lectura (-1, 0, 1…). */
+  consumeWheel(): number {
+    const w = this.wheel;
+    this.wheel = 0;
+    return w;
+  }
+
   isMouseDown(button: number): boolean {
     return (this.buttons & (1 << button)) !== 0;
   }
@@ -92,5 +116,6 @@ export class InputManager {
 
   endFrame(): void {
     this.pressedThisFrame.clear();
+    this.mousePressed.clear();
   }
 }

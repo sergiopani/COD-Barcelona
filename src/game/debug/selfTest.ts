@@ -33,6 +33,23 @@ function bodyOverlaps(scene: Scene, feet: Vector3, margin: number): boolean {
   return [0.05, 0.6, 1.2, 1.75].some((h) => insideSolid(scene, feet.add(new Vector3(0, h, 0)), margin) !== null);
 }
 
+/** Busca una z con la franja x0..x1 libre de sólidos (para pruebas de bordillo/salto que no dependan de la disposición del mobiliario). */
+function findClearZ(scene: Scene, x0: number, x1: number): number {
+  for (let z = -40; z <= 40; z += 1) {
+    let clear = true;
+    for (let x = Math.min(x0, x1); x <= Math.max(x0, x1) && clear; x += 0.5) {
+      for (const dz of [-0.7, 0, 0.7]) {
+        if (bodyOverlaps(scene, new Vector3(x, 0.05, z + dz), 0.5)) {
+          clear = false;
+          break;
+        }
+      }
+    }
+    if (clear) return z;
+  }
+  return -5;
+}
+
 /**
  * Pruebas automáticas de movimiento/colisión ejecutadas dentro del navegador (window.__game.selfTest()).
  * Simulan al jugador a 60 Hz sin necesidad de teclado ni Pointer Lock.
@@ -92,19 +109,20 @@ export function runCollisionSelfTest(scene: Scene, player: PlayerController, map
   add(`empuje en 16 direcciones desde ${origins.length - skipped} puntos (${pushCount} carreras)`, pushFail === 0, pushFail === 0 ? "ninguna penetración" : `${pushFail} fallos: ${failDetails.join(" | ")}`);
 
   // 3) Bordillo: de la calzada a la acera (debe subir) y la verja debe frenar
-  player.teleport(63, 0.05, -5, -Math.PI / 2);
+  const clearZ = findClearZ(scene, 58, 68);
+  player.teleport(63, 0.05, clearZ, -Math.PI / 2);
   let maxY = 0;
   run(150, 1, false, 0, () => (maxY = Math.max(maxY, player.position.y)));
   add("sube el bordillo (0,14 m) hacia la acera", maxY > 0.12, `y máx = ${maxY.toFixed(3)}`);
   add("la verja de la manzana frena al jugador", player.position.x > 56.5, `x final = ${player.position.x.toFixed(2)} (verja en x = 56.5)`);
 
   // 4) Bajar de la acera a la calzada
-  player.teleport(58, 0.2, -5, Math.PI / 2);
+  player.teleport(58, 0.2, clearZ, Math.PI / 2);
   run(120, 1, false);
-  add("baja del bordillo a la calzada", player.grounded && player.position.y < 0.05, `y = ${player.position.y.toFixed(3)} grounded=${player.grounded}`);
+  add("baja del bordillo a la calzada", player.grounded && player.position.y < 0.05, `y = ${player.position.y.toFixed(3)} grounded=${player.grounded} (z=${clearZ}, x final=${player.position.x.toFixed(1)})`);
 
   // 5) Salto: despega y aterriza
-  player.teleport(63.5, 0.05, -10, 0);
+  player.teleport(63.5, 0.05, clearZ - 6, 0);
   run(30, 0, false);
   let apex = 0;
   player.step({ forward: 0, strafe: 0, sprint: false, jump: true }, DT);

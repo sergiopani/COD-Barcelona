@@ -11,7 +11,50 @@
 
     <div id="hud" hidden>
       <div id="fps">FPS --</div>
+      <div id="stats"><span id="st-kills">0</span> bajas · <span id="st-deaths">0</span> muertes · <span id="st-acc">--</span> precisión · <span id="st-hs">0</span> cabezas</div>
+      <div id="killfeed"></div>
       <div id="crosshair"></div>
+      <div id="hitmarker"><i></i><i></i><i></i><i></i></div>
+      <div id="dmg-vignette"></div>
+      <div id="dmg-arrow"><b></b></div>
+      <div id="scope" hidden>
+        <svg viewBox="-100 -100 200 200" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+          <defs>
+            <radialGradient id="lens" cx="0" cy="0" r="100" gradientUnits="userSpaceOnUse">
+              <stop offset="0.78" stop-color="#000" stop-opacity="0" />
+              <stop offset="1" stop-color="#000" stop-opacity="0.75" />
+            </radialGradient>
+          </defs>
+          <circle r="100" fill="url(#lens)" />
+          <g stroke="#050505" stroke-linecap="butt" fill="none">
+            <line x1="-100" y1="0" x2="-14" y2="0" stroke-width="0.35" />
+            <line x1="14" y1="0" x2="100" y2="0" stroke-width="0.35" />
+            <line x1="0" y1="-100" x2="0" y2="-14" stroke-width="0.35" />
+            <line x1="0" y1="14" x2="0" y2="100" stroke-width="0.35" />
+            <line x1="-100" y1="0" x2="-40" y2="0" stroke-width="2.2" />
+            <line x1="40" y1="0" x2="100" y2="0" stroke-width="2.2" />
+            <line x1="0" y1="-100" x2="0" y2="-40" stroke-width="2.2" />
+            <line x1="0" y1="40" x2="0" y2="100" stroke-width="2.2" />
+            <line x1="-40" y1="0" x2="-14" y2="0" stroke-width="0.9" />
+            <line x1="14" y1="0" x2="40" y2="0" stroke-width="0.9" />
+            <line x1="0" y1="-40" x2="0" y2="-14" stroke-width="0.9" />
+            <line x1="0" y1="14" x2="0" y2="40" stroke-width="0.9" />
+          </g>
+          <g fill="#050505">
+            <circle cx="-20" cy="0" r="0.7" /><circle cx="-26" cy="0" r="0.7" /><circle cx="-32" cy="0" r="0.7" />
+            <circle cx="20" cy="0" r="0.7" /><circle cx="26" cy="0" r="0.7" /><circle cx="32" cy="0" r="0.7" />
+            <circle cx="0" cy="20" r="0.7" /><circle cx="0" cy="26" r="0.7" /><circle cx="0" cy="32" r="0.7" />
+            <circle cx="0" cy="-20" r="0.7" /><circle cx="0" cy="-26" r="0.7" /><circle cx="0" cy="-32" r="0.7" />
+          </g>
+          <circle r="0.9" fill="#d11" />
+        </svg>
+        <div id="scope-zoom">4×</div>
+        <div id="scope-breath"><i></i></div>
+      </div>
+      <div id="ammo"><span id="ammo-mag">5</span><small> / <span id="ammo-res">30</span></small><div id="weapon-name">M1A Francotirador</div></div>
+      <div id="health"><div id="health-bar"><i></i></div><span id="health-num">100</span></div>
+      <div id="reload-tip" hidden>RECARGANDO…</div>
+      <div id="death" hidden><h2>ELIMINADO</h2><p>Reapareces en <b id="death-t">3</b> s</p></div>
     </div>
 
     <div id="menu">
@@ -35,7 +78,11 @@
           <tr><td><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></td><td>Moverse</td></tr>
           <tr><td><kbd>Ratón</kbd></td><td>Mirar</td></tr>
           <tr><td><kbd>Espacio</kbd></td><td>Saltar</td></tr>
-          <tr><td><kbd>Shift</kbd></td><td>Correr</td></tr>
+          <tr><td><kbd>Shift</kbd></td><td>Correr · apuntando: aguantar la respiración</td></tr>
+          <tr><td><kbd>Clic izq.</kbd></td><td>Disparar (cerrojo)</td></tr>
+          <tr><td><kbd>Clic der.</kbd></td><td>Apuntar (mantener)</td></tr>
+          <tr><td><kbd>Rueda</kbd></td><td>Cambiar zoom 4× / 8× al apuntar</td></tr>
+          <tr><td><kbd>R</kbd></td><td>Recargar</td></tr>
           <tr><td><kbd>Esc</kbd></td><td>Pausa / liberar cursor</td></tr>
         </table>
         <p class="note" id="note"></p>

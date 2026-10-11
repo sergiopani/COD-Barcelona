@@ -44,5 +44,7 @@ export const PLAYER = {
 export const ASSETS = {
   sagradaFamiliaGlb: "/assets/buildings/sagrada-familia.glb",
   palmGlb: "/assets/props/palm-tree.glb",
+  carPackGlb: "/assets/props/car-pack.glb",
+  rifleGlb: "/assets/weapons/m1a-springfield.glb",
   sagradaFamiliaConfig: "/assets/buildings/sagrada-familia.config.json",
 } as const;

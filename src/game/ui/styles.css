@@ -56,3 +56,48 @@ kbd {
 }
 .settings select option { color: #111; }
 .settings input[type="checkbox"] { accent-color: var(--accent); width: 15px; height: 15px; }
+
+/* ---- Combate ---- */
+#stats { position: absolute; top: 10px; left: 14px; padding: 4px 9px; border-radius: 3px; background: rgba(0,0,0,0.45); color: var(--ink); font: 12px ui-monospace, Menlo, monospace; }
+#killfeed { position: absolute; top: 44px; right: 14px; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+#killfeed div { padding: 3px 9px; border-radius: 3px; background: rgba(0,0,0,0.55); color: var(--ink); font: 12px ui-monospace, Menlo, monospace; animation: feedFade 4.5s forwards; }
+#killfeed div.bad { color: #ff9a8a; }
+@keyframes feedFade { 0%, 80% { opacity: 1; } 100% { opacity: 0; } }
+#hitmarker { position: absolute; left: 50%; top: 50%; width: 0; height: 0; opacity: 0; transition: opacity 0.25s; }
+#hitmarker.show { opacity: 1; transition: none; }
+#hitmarker i { position: absolute; width: 11px; height: 2px; background: #fff; box-shadow: 0 0 2px #000; }
+#hitmarker i:nth-child(1) { transform: translate(-19px,-19px) rotate(45deg); }
+#hitmarker i:nth-child(2) { transform: translate(8px,-19px) rotate(-45deg); }
+#hitmarker i:nth-child(3) { transform: translate(-19px,17px) rotate(-45deg); }
+#hitmarker i:nth-child(4) { transform: translate(8px,17px) rotate(45deg); }
+#hitmarker.head i, #hitmarker.kill i { background: #ff3b30; }
+#dmg-vignette { position: absolute; inset: 0; opacity: 0; transition: opacity 0.6s; background: radial-gradient(ellipse at center, rgba(0,0,0,0) 45%, rgba(190,0,0,0.65) 100%); }
+#dmg-vignette.show { opacity: 1; transition: none; }
+#dmg-arrow { position: absolute; left: 50%; top: 50%; width: 0; height: 0; opacity: 0; transition: opacity 0.9s; }
+#dmg-arrow.show { opacity: 1; transition: none; }
+#dmg-arrow b { position: absolute; left: -26px; top: -170px; width: 52px; height: 26px; background: radial-gradient(ellipse at 50% 100%, rgba(255,40,30,0.95), rgba(255,40,30,0) 70%); }
+#scope { position: absolute; inset: 0; background: #000; display: grid; place-items: center; }
+#scope[hidden] { display: none; }
+#scope svg { width: min(100vh, 100vw); height: min(100vh, 100vw); position: relative; }
+#scope::before {
+  content: ""; position: absolute; inset: 0;
+  background: radial-gradient(circle at 50% 50%, transparent 0, transparent calc(min(50vh, 50vw) - 2px), #000 calc(min(50vh, 50vw) + 1px));
+  pointer-events: none; z-index: 2;
+}
+#scope { background: transparent; }
+#scope-zoom { position: absolute; bottom: calc(50vh - min(50vh, 50vw) + 14px); left: 50%; transform: translateX(-50%); z-index: 3; color: #ddd; font: 600 13px ui-monospace, Menlo, monospace; text-shadow: 0 0 3px #000; }
+#scope-breath { position: absolute; left: 50%; bottom: calc(50vh - min(50vh, 50vw) + 36px); width: 90px; height: 3px; transform: translateX(-50%); background: rgba(255,255,255,0.18); z-index: 3; }
+#scope-breath i { display: block; height: 100%; width: 100%; background: #9fd6ff; transform-origin: left; }
+#ammo { position: absolute; right: 26px; bottom: 22px; text-align: right; color: var(--ink); font: 700 44px ui-monospace, Menlo, monospace; text-shadow: 0 0 6px rgba(0,0,0,0.7); }
+#ammo small { font-size: 22px; opacity: 0.75; }
+#ammo.low #ammo-mag { color: #ff6a5a; }
+#weapon-name { font: 600 11px "Helvetica Neue", Arial, sans-serif; letter-spacing: 0.18em; text-transform: uppercase; opacity: 0.8; }
+#health { position: absolute; left: 26px; bottom: 26px; display: flex; align-items: center; gap: 12px; color: var(--ink); font: 700 30px ui-monospace, Menlo, monospace; text-shadow: 0 0 6px rgba(0,0,0,0.7); }
+#health-bar { width: 190px; height: 10px; background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.3); }
+#health-bar i { display: block; height: 100%; background: #5bd16a; transform-origin: left; transition: transform 0.15s; }
+#health.low #health-bar i { background: #e5483a; }
+#reload-tip { position: absolute; left: 50%; top: 58%; transform: translateX(-50%); color: #ffd9a0; font: 700 13px ui-monospace, Menlo, monospace; letter-spacing: 0.2em; text-shadow: 0 0 4px #000; }
+#reload-tip[hidden], #death[hidden] { display: none; }
+#death { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; background: rgba(60,0,0,0.5); color: #fff; }
+#death h2 { margin: 0; font-size: 56px; letter-spacing: 0.3em; }
+#death p { margin: 6px 0 0; font-size: 16px; opacity: 0.9; }

@@ -10,6 +10,7 @@ import { createWetMaterials, type WetSet } from "./WetSurfaces";
 import { buildPalms, type PalmSet } from "./PalmTrees";
 import { loadSagradaFamilia, type SagradaResult } from "./SagradaFamiliaLoader";
 import { buildProps } from "./StreetFurniture";
+import { loadVehicles, type VehicleLibrary } from "./VehicleSet";
 import { buildStreets, type StreetBuild } from "./StreetGenerator";
 import { buildingChains, centerChain, crosswalkRect, crosswalks, props, spawns, type Spawn } from "./mapLayout";
 
@@ -34,6 +35,7 @@ export class BarcelonaMap {
   materials!: MaterialSet;
   sagrada!: SagradaResult;
   private palms: PalmSet | null = null;
+  private vehicles: VehicleLibrary | null = null;
   private streets!: StreetBuild;
   private wetSet: WetSet | null = null;
   stats!: MapStats;
@@ -86,8 +88,16 @@ export class BarcelonaMap {
       for (const m of this.palms.meshes) this.lighting.addShadowCaster(m, "prop");
       this.meshes.push(...this.palms.meshes);
     }
+    this.vehicles = await loadVehicles(this.scene);
     const pset = new BatchSet(mats.tile);
-    buildProps(pset, props, this.collisions, 7, !this.palms);
+    const carPlacements = buildProps(pset, props, this.collisions, 7, !this.palms, this.vehicles);
+    if (this.vehicles) {
+      this.vehicles.place(carPlacements);
+      for (const t of this.vehicles.types.values()) {
+        this.meshes.push(...t.parts);
+        if (t.parts[0]) this.lighting.addShadowCaster(t.parts[0], "prop"); // solo la carrocería proyecta sombra
+      }
+    }
     vertices += pset.totalVertices;
     this.addBuilt(pset.build(this.scene, "props"), true);
 
@@ -190,6 +200,7 @@ export class BarcelonaMap {
   dispose(): void {
     this.sagrada?.dispose();
     this.palms?.dispose();
+    this.vehicles?.dispose();
     this.meshes.forEach((m) => m.dispose());
     this.materials?.dispose();
   }

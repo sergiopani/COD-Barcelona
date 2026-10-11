@@ -3,8 +3,8 @@
 Shooter en primera persona para navegador (TypeScript + Babylon.js + Vite), ambientado **solo** en la manzana de la
 Sagrada Família y su entorno inmediato (Eixample, Barcelona).
 
-**Estado: FASE 1 completada** — escenario 3D recorrible en primera persona. Armas, salud, multijugador y publicación
-son las fases 2–5 (no implementadas todavía).
+**Estado: FASE 2 completada (modo individual con francotirador)** — escenario 3D recorrible, arma con mira telescópica, salud, bots-objetivo,
+marcador y audio. Multijugador y publicación son las fases 3–5 (no implementadas todavía). Ver `docs/COMBATE.md`.
 
 ## Requisitos
 
@@ -27,6 +27,8 @@ Pulsa **Jugar** (el cursor solo se bloquea tras ese clic). **Esc** libera el cur
 | Espacio | Saltar |
 | Shift | Correr |
 | Esc | Pausa / liberar cursor |
+
+Combate: **clic izq.** disparar · **clic der.** (mantener) apuntar · **rueda** zoom 4×/8× · **Shift** (apuntando) aguantar la respiración · **R** recargar.
 
 En el menú inicial/pausa: **Calidad gráfica** (Bajo/Medio/Alto) y **Asfalto mojado**; ver `docs/GRAFICOS.md`.
 
@@ -54,6 +56,8 @@ src/game/world/mapLayout.ts       datos puros: cadenas de fachada, cruces, pasos
 src/game/world/BarcelonaMap.ts    orquesta la construcción del mapa
 src/game/world/StreetGenerator.ts calzada, aceras, bordillos, cebras, marcas viales
 src/game/world/BuildingGenerator.ts + FacadeModules.ts   edificios modulares del Eixample
+src/game/world/VehicleSet.ts      coches aparcados desde public/assets/props/car-pack.glb (thin instances)
+src/game/weapons/ · combat/ · audio/   sistema de combate (ver docs/COMBATE.md)
 src/game/world/StreetFurniture.ts farolas, bancos, semáforos, señales, coches, motos
 src/game/world/PalmTrees.ts       palmeras desde public/assets/props/palm-tree.glb (thin instances)
 src/game/world/SagradaFamilia*.ts carga del GLB + basílica provisional
@@ -73,6 +77,7 @@ docs/MAPA.md                      qué es aproximado y convenciones del mapa
 Con el juego abierto, en la consola del navegador:
 
 ```js
+__game.combatTest()        // 14 pruebas de combate (disparo, ADS, recarga, muerte…)
 __game.selfTest()          // 19 pruebas: suelo, bordillos, verja, salto, 16 pasos de peatones,
                            // calles salientes, empuje en 16 direcciones y 275 recorridos aleatorios
 __game.stats()             // FPS, draw calls, edificios, colliders…

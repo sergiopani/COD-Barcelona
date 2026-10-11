@@ -2,6 +2,7 @@ import { Rng } from "../util/rng";
 import { BatchSet, F, Frame, type RGBA } from "./MeshBatch";
 import type { CollisionManager } from "./CollisionManager";
 import type { Prop } from "./mapLayout";
+import type { VehicleLibrary, VehiclePlacement } from "./VehicleSet";
 
 /**
  * Mobiliario urbano y vehículos aparcados. Todo se acumula en lotes (un draw call por material)
@@ -196,8 +197,16 @@ function planter(set: BatchSet, f: Frame, rng: Rng, x: number, z: number): ColBo
 }
 
 /** Genera todo el mobiliario y vehículos y registra sus colliders. */
-export function buildProps(set: BatchSet, props: Prop[], collisions: CollisionManager, seed = 7, proceduralTrees = false): void {
+export function buildProps(
+  set: BatchSet,
+  props: Prop[],
+  collisions: CollisionManager,
+  seed = 7,
+  proceduralTrees = false,
+  vehicles: VehicleLibrary | null = null,
+): VehiclePlacement[] {
   const rng = new Rng(seed);
+  const placements: VehiclePlacement[] = [];
   for (const p of props) {
     const f = new Frame(p.x, 0.14, p.z, p.ux, p.uz, p.uz, -p.ux);
     // los vehículos están sobre la calzada (y = 0); el resto sobre la acera (y = 0.14)
@@ -206,10 +215,16 @@ export function buildProps(set: BatchSet, props: Prop[], collisions: CollisionMa
     let col: ColBox | null = null;
     switch (p.kind) {
       case "car":
-        col = car(set, f, rng, false);
-        break;
       case "van":
-        col = car(set, f, rng, true);
+        if (vehicles) {
+          // el modelo GLB se dibuja con thin instances (VehicleSet); aquí solo el collider a su medida
+          const type = vehicles.pick(p.kind, p.variant);
+          placements.push({ type, x: p.x, z: p.z, ux: p.ux, uz: p.uz });
+          const sz = vehicles.size(type);
+          col = { sx: sz.x + 0.1, sy: sz.y, sz: sz.z + 0.1 };
+        } else {
+          col = car(set, f, rng, p.kind === "van");
+        }
         break;
       case "moto":
         col = moto(set, f, rng);
@@ -250,4 +265,5 @@ export function buildProps(set: BatchSet, props: Prop[], collisions: CollisionMa
       collisions.addBox(cx, base + col.sy / 2, cz, col.sx, col.sy, col.sz, f.yaw, p.cover ? "cover" : "prop");
     }
   }
+  return placements;
 }
