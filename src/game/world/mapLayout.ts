@@ -172,7 +172,7 @@ for (const sgn of [-1, 1]) {
 
 // ---------------------------------------------------------------- mobiliario y vehículos
 
-export type PropKind = "tree" | "lamp" | "bench" | "bin" | "bollard" | "trafficLight" | "sign" | "planter" | "car" | "van" | "moto" | "terrace";
+export type PropKind = "tree" | "lamp" | "bench" | "bin" | "bollard" | "trafficLight" | "sign" | "planter" | "car" | "van" | "moto" | "terrace" | "mailbox";
 
 export interface Prop {
   kind: PropKind;
@@ -289,6 +289,28 @@ for (const run of streetRuns) {
       const px = x + (run.axis === "x" ? jitter : 0);
       const pz = z + (run.axis === "z" ? jitter : 0);
       addProp(r < 0.12 ? "van" : r < 0.24 ? "moto" : "car", px, pz, ux, uz, true);
+    }
+  }
+}
+
+// Buzones de Correos: 8 repartidos por las aceras de la calle que rodea la basílica (dos por lado), sin tocar el generador aleatorio.
+// Posición determinista: se busca, junto a la fachada, el primer hueco libre a partir de cierto punto del tramo.
+{
+  const wanted = new Map<string, number[]>([["side0", [0.3, 0.72]], ["side1", [0.3, 0.72]], ["side2", [0.3, 0.72]], ["side3", [0.3, 0.72]]]);
+  for (const chain of outerChains) {
+    for (const frac of wanted.get(chain.id) ?? []) {
+      // el tramo recto más largo de la cadena que da a la calle del anillo
+      const seg = chain.segs.filter((s) => s.kind === "straight").sort((a, b) => b.len - a.len)[0];
+      if (!seg) continue;
+      for (let k = 0; k < 40; k++) {
+        const t = seg.len * frac + k * 0.8;
+        if (t > seg.len - 4) break;
+        const x = seg.a.x + seg.ux * t + seg.nx * 1.7, z = seg.a.z + seg.uz * t + seg.nz * 1.7;
+        if (nearCrosswalk(x, z, 3)) continue;
+        if (props.some((p) => Math.hypot(p.x - x, p.z - z) < 2.4)) continue;
+        addProp("mailbox", x, z, seg.ux, seg.uz, true, 0);
+        break;
+      }
     }
   }
 }

@@ -1,5 +1,6 @@
 import { Color3, DynamicTexture, PBRMaterial, Scene, Texture } from "@babylonjs/core";
 import { BATLLO_TEXTURES, BATLLO_VARIANTS, batlloKey } from "./BatlloFacade";
+import { MAILBOX_TEXTURE } from "./Mailbox";
 
 /**
  * Materiales PBR con texturas 100 % procedurales (sin descargas externas).
@@ -28,7 +29,8 @@ export type MatKey =
   | "batllo0"
   | "batllo1"
   | "batllo2"
-  | "batllo3";
+  | "batllo3"
+  | "mailbox";
 
 /** Nombres de comercios y números de portal del atlas de rótulos (la disposición debe coincidir con FacadeModules). */
 export const SIGN_NAMES = [
@@ -399,7 +401,14 @@ export function createMaterials(scene: Scene): MaterialSet {
     batllo1: pbr(scene, "batllo1", { roughness: 0.7 }),
     batllo2: pbr(scene, "batllo2", { roughness: 0.7 }),
     batllo3: pbr(scene, "batllo3", { roughness: 0.7 }),
+    mailbox: pbr(scene, "mailbox", { roughness: 0.55, metallic: 0.15 }),
   } satisfies Record<MatKey, PBRMaterial>;
+
+  // Buzón de Correos: atlas horneado del escaneo (4 caras + tapa).
+  const mbTex = new Texture(MAILBOX_TEXTURE, scene, false, true, Texture.TRILINEAR_SAMPLINGMODE);
+  mbTex.anisotropicFilteringLevel = 8;
+  mbTex.wrapU = mbTex.wrapV = Texture.CLAMP_ADDRESSMODE;
+  mat.mailbox.albedoTexture = mbTex;
 
   // Fachadas de la Casa Batlló: textura horneada con silueta alfa (4 paletas). Se cargan como imágenes normales.
   for (let i = 0; i < BATLLO_VARIANTS; i++) {
@@ -451,6 +460,7 @@ export function createMaterials(scene: Scene): MaterialSet {
     batllo1: 1,
     batllo2: 1,
     batllo3: 1,
+    mailbox: 1,
   };
 
   const panot = pbr(scene, "panot", { tex: panotTex, roughness: 0.82 });

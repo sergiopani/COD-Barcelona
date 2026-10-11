@@ -113,8 +113,12 @@ por casa (`src/game/world/BatlloFacade.ts`) donde los balcones sobresalen de ver
 
 El panorama aportado (`assets-src/panorama/sf_0.jpeg`, foto esférica de Barcelona hecha con dron sobre la Sagrada Família, 6000×3000) se procesa con `npm run prepare:panorama`:
 - **Fondo del menú:** franja con la basílica y el horizonte que se desplaza despacio (bucle continuo de 360°); en pausa se ve la escena.
-- **Cielo con foto real** (casilla «Cielo con foto real» del menú, activada por defecto): cúpula con nubes, la silueta de Barcelona, el Tibidabo, la torre Glòries y el mar. La basílica de la foto se ha retirado con un parche de ciudad/cielo
+- **Cielo con foto real** (casilla «Cielo con foto real» del menú, activada por defecto), recoloreado a **día despejado** (azul con nubes blancas; el original era nublado): cúpula con nubes, la silueta de Barcelona, el Tibidabo, la torre Glòries y el mar. La basílica de la foto se ha retirado con un parche de ciudad/cielo
   vecinos, y bajo el horizonte se funde con la niebla. Sigue calculándose la iluminación con el cielo procedural. Calidad 4096 px (Bajo/Medio) o 6000 px (Alto). Limitación: con el zoom de 8× del francotirador la foto se ve blanda (≈ 117 px para 7°).
+
+## Buzones de Correos
+
+8 buzones (escaneo real, `scripts/bake-letterbox.mjs`) repartidos por las aceras de la calle que rodea la basílica (`mapLayout.ts`, `Mailbox.ts`): geometría de 2 cajas con el atlas horneado (graffitis y pegatinas incluidos) y collider de cobertura (0,5 × 1,27 × 0,5 m).
 
 ## Créditos de datos
 

@@ -9,6 +9,7 @@ import { buildHeightfieldShadowProxy } from "./SagradaShadowProxy";
 import { createWetMaterials, type WetSet } from "./WetSurfaces";
 import { buildPalms, type PalmSet } from "./PalmTrees";
 import { loadBatlloRelief } from "./BatlloFacade";
+import { loadMailbox } from "./Mailbox";
 import { loadSagradaFamilia, type SagradaResult } from "./SagradaFamiliaLoader";
 import { buildProps } from "./StreetFurniture";
 import { loadVehicles, type VehicleLibrary } from "./VehicleSet";
@@ -65,6 +66,7 @@ export class BarcelonaMap {
 
     await tick("Levantando edificios del Eixample…");
     await loadBatlloRelief();
+    await loadMailbox();
     const specs = planBuildings(buildingChains, 1714);
     pickBatlloHouses(specs);
     const bset = new BatchSet(mats.tile);

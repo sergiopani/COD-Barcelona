@@ -1,3 +1,4 @@
+import { addMailbox, hasMailbox, mailboxSize } from "./Mailbox";
 import { Rng } from "../util/rng";
 import { BatchSet, F, Frame, type RGBA } from "./MeshBatch";
 import type { CollisionManager } from "./CollisionManager";
@@ -256,6 +257,13 @@ export function buildProps(
         break;
       case "planter":
         col = planter(set, f, rng, p.x, p.z);
+        break;
+      case "mailbox":
+        if (hasMailbox()) {
+          addMailbox(set.get(CHUNK, "mailbox"), f);
+          const sz = mailboxSize();
+          col = { sx: sz.sx, sy: sz.sy, sz: sz.sz };
+        }
         break;
     }
     if (col) {

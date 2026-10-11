@@ -31,11 +31,36 @@ for (let y = 0; y < BAND; y++) {
   // en el cielo el borde se difumina mucho (nubes suaves); en el skyline poco (para no tocar la torre Glòries)
   const fl = y < HORIZON - 30 ? 320 : 70, fr = y < HORIZON - 30 ? 320 : 40;
   for (let x = x0 - fl; x < x1 + fr; x++) {
-    const sx = srcStart + (x1 - 1 - Math.min(Math.max(x, x0), x1 - 1)) ; // reflejo
+    const wd = x1 - x0, m = (((x1 - 1 - x) % (2 * wd)) + 2 * wd) % (2 * wd), sx = srcStart + (m < wd ? m : 2 * wd - 1 - m); // reflejo continuo (también en el borde difuminado)
     const a = x < x0 ? 1 - (x0 - x) / fl : x >= x1 ? 1 - (x - x1 + 1) / fr : 1; // peso del parche
     const w = Math.max(0, Math.min(1, a));
     const o = (y * W + x) * ch, s = (y * W + sx) * ch;
     for (let c = 0; c < 3; c++) band[o + c] = Math.round(band[o + c] * (1 - w) + px[s + c] * w);
+  }
+}
+// cielo despejado: el panorama original es de un día nublado. Se rehace el color del cielo conservando la forma de las nubes:
+// las zonas luminosas (nubes) quedan blancas con su sombreado y el resto pasa a un azul de degradado (más profundo en el cénit, más pálido en el horizonte).
+// Cerca del horizonte solo se tocan los píxeles claros (así el Tibidabo y los edificios no se tiñen de azul).
+{
+  const sstep = (a, b, x) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+  const ZEN = [28, 98, 205], HOR = [128, 188, 240];
+  const SAFE = 1235; // por encima de esta fila todo es cielo
+  const lo = Number(process.env.CLOUD_LO ?? 0.7), hi = Number(process.env.CLOUD_HI ?? 0.97);
+  for (let y = 0; y < HORIZON; y++) {
+    const el = (HORIZON - y) / HORIZON; // 1 en el cénit, 0 en el horizonte
+    const g = Math.pow(1 - el, 2.2);
+    const sky = [ZEN[0] + (HOR[0] - ZEN[0]) * g, ZEN[1] + (HOR[1] - ZEN[1]) * g, ZEN[2] + (HOR[2] - ZEN[2]) * g];
+    for (let x = 0; x < W; x++) {
+      const o = (y * W + x) * ch;
+      const r = band[o], gg = band[o + 1], b = band[o + 2];
+      const Y = (0.299 * r + 0.587 * gg + 0.114 * b) / 255;
+      const w = y < SAFE ? 1 : sstep(0.5, 0.7, Y);
+      if (w <= 0) continue;
+      const c = sstep(lo, hi, Y);
+      const shade = Math.min(1, 0.80 + 0.22 * sstep(0.55, 1, Y));
+      const cloud = [255 * shade, 255 * shade, 255 * Math.min(1, shade + 0.025)];
+      for (let k = 0; k < 3; k++) band[o + k] = Math.round(band[o + k] * (1 - w) + (sky[k] * (1 - c) + cloud[k] * c) * w);
+    }
   }
 }
 // desvanecido bajo el horizonte → niebla: de 6° sobre el horizonte hacia abajo, el suelo visto desde arriba no debe verse
