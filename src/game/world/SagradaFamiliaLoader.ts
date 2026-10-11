@@ -1,6 +1,6 @@
 import { AbstractMesh, Color3, ImportMeshAsync, Mesh, PBRMaterial, Scene, TransformNode, Vector3 } from "@babylonjs/core";
 import "@babylonjs/loaders/glTF";
-import { ASSETS } from "../assets";
+import { ASSETS, assetUrl } from "../assets";
 import type { CollisionManager } from "./CollisionManager";
 import type { MaterialSet } from "./Materials";
 import { glbExists } from "./assetUtil";
@@ -23,6 +23,8 @@ export interface SagradaConfig {
   /** Apoya la parte más baja del modelo en y = position[1]. */
   alignToGround: boolean;
   castShadows: boolean;
+  /** Archivo GLB dentro de assets/buildings (por defecto sagrada-familia.glb). Permite alternar entre modelos desde el JSON. */
+  model?: string;
   /** Multiplicador de color base (tinte cálido sobre la textura original). null = sin cambios. */
   tint: [number, number, number] | null;
   /** Colliders simples en planta: centro, tamaño y altura (el modelo NUNCA se usa como colisión). */
@@ -61,7 +63,7 @@ async function loadConfig(): Promise<SagradaConfig> {
 
 export async function loadSagradaFamilia(scene: Scene, mats: MaterialSet, collisions: CollisionManager): Promise<SagradaResult> {
   const config = await loadConfig();
-  const url = ASSETS.sagradaFamiliaGlb;
+  const url = config.model ? assetUrl(`assets/buildings/${config.model}`) : ASSETS.sagradaFamiliaGlb;
 
   if (await glbExists(url)) {
     try {

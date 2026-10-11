@@ -46,7 +46,7 @@ Otros comandos: `npm run build` (typecheck + build de producción en `dist/`), `
 El modelo activo (`public/assets/buildings/sagrada-familia.glb`, ~13 MB, 353 k triángulos tras optimizar) es el **modelo original aportado por el usuario**
 (`assets-src/buildings/sagrada-familia.glb`, 930 k triángulos y texturas 4096²; se optimiza con `npm run optimize:models`).
 Está configurado con `rotationYDeg: -90` (fachada de la Gloria al sur), `scale: 42` (≈ 101 × 124 × 98 m, cabe en la manzana) y un tinte cálido.
-Alternativas disponibles (no activas): la fotogrametría del ICGC (`npm run build:sagrada-icgc` → `sagrada-familia-icgc.glb`) y la maqueta de MiniWorld3D
+Alternativas disponibles (no activas; ver `docs/SAGRADA.md`): un **modelo procedural propio** con las medidas reales (`npm run build:sagrada-procedural`), la fotogrametría del ICGC (`npm run build:sagrada-icgc` → `sagrada-familia-icgc.glb`) y la maqueta de MiniWorld3D
 (`scripts/stl-to-glb.mjs`). El archivo está en `.gitignore` por su tamaño. Ajústalo en
 `public/assets/buildings/sagrada-familia.config.json` (posición, rotación, escala, altura objetivo, alineado al suelo,
 colliders). Instrucciones completas en `public/assets/buildings/README.txt`. Sin el archivo, el juego muestra un error
