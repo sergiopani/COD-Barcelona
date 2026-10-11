@@ -123,3 +123,12 @@ kbd {
 #scoreboard tr.dead td:first-child { opacity: 0.5; text-decoration: line-through; }
 #sb-limit { margin: 8px 0 0; opacity: 0.6; }
 #net-banner { position: absolute; left: 50%; top: 34%; transform: translateX(-50%); padding: 10px 18px; background: rgba(0,0,0,0.7); color: #ffd9a0; font: 700 15px "Helvetica Neue", Arial, sans-serif; letter-spacing: 0.1em; border-radius: 4px; }
+#scoreboard h3.sb-global { margin-top: 14px; }
+#scoreboard td:first-child, #scoreboard th:first-child { text-align: left; }
+#mp-board { margin: 0 0 14px; padding: 10px 14px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; text-align: left; }
+#mp-board[hidden] { display: none; }
+#mp-board h2 { margin: 0 0 6px; font: 700 12px "Helvetica Neue", Arial, sans-serif; letter-spacing: 0.15em; text-transform: uppercase; opacity: 0.8; }
+#mp-board ol { margin: 0; padding-left: 22px; font-size: 13px; }
+#mp-board li span { display: inline-block; min-width: 150px; }
+#mp-board li b { color: #ffd9a0; }
+#mp-board p { margin: 6px 0 0; font-size: 11px; opacity: 0.6; }

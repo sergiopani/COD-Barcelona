@@ -3,6 +3,7 @@ import http from "node:http";
 import path from "node:path";
 import { WebSocketServer, type WebSocket } from "ws";
 import { MAX_PLAYERS, PROTOCOL_VERSION, type ClientMsg } from "../../shared/protocol";
+import { Leaderboard } from "./Leaderboard";
 import { WorldCollision, type WorldData } from "../../shared/world";
 import { Room, ServerPlayer } from "./Room";
 
@@ -46,37 +47,31 @@ const MIME: Record<string, string> = {
   ".txt": "text/plain",
 };
 
-const rooms = new Map<string, Room>();
-let autoRoomCounter = 0;
+const DATA_DIR = path.resolve(process.env.DATA_DIR ?? "data");
+const leaderboard = new Leaderboard(process.env.DATA_DIR === "none" ? null : path.join(DATA_DIR, "leaderboard.json"));
+const MAX_PLAYERS_EFF = Math.max(2, Math.min(128, Number(process.env.MAX_PLAYERS) || MAX_PLAYERS));
+log(`Ranking global: ${leaderboard.size} jugadores con bajas${process.env.DATA_DIR === "none" ? " (solo en memoria)" : ` (${path.join(DATA_DIR, "leaderboard.json")})`}`);
+
+/** La ÚNICA sala del juego: todos los jugadores comparten la misma partida continua. */
+const room = new Room("GLOBAL", world, leaderboard, MAX_PLAYERS_EFF);
 
 function log(msg: string): void {
   console.log(`[${new Date().toISOString().slice(11, 19)}] ${msg}`);
-}
-
-function findRoom(code?: string): Room {
-  if (code) {
-    const clean = code.toUpperCase().replace(/[^A-Z0-9_-]/g, "").slice(0, 12) || "SALA";
-    let r = rooms.get(clean);
-    if (!r) {
-      r = new Room(clean, world, true);
-      rooms.set(clean, r);
-      log(`Sala privada creada: ${clean}`);
-    }
-    return r;
-  }
-  for (const r of rooms.values()) if (!r.isPrivate && !r.full) return r;
-  const id = `P${++autoRoomCounter}`;
-  const r = new Room(id, world, false);
-  rooms.set(id, r);
-  log(`Sala pública creada: ${id}`);
-  return r;
 }
 
 const server = http.createServer((req, res) => {
   const url = (req.url ?? "/").split("?")[0];
   if (url === "/health") {
     res.setHeader("Content-Type", "application/json");
-    res.end(JSON.stringify({ ok: true, rooms: rooms.size, players: [...rooms.values()].reduce((a, r) => a + r.players.size, 0), protocol: PROTOCOL_VERSION }));
+    res.end(JSON.stringify({ ok: true, rooms: 1, players: room.players.size, maxPlayers: MAX_PLAYERS_EFF, ranked: leaderboard.size, protocol: PROTOCOL_VERSION }));
+    return;
+  }
+  if (url === "/api/leaderboard") {
+    // ranking público (solo nombres y cifras; nunca tokens)
+    const q = new URL(req.url ?? "/", "http://x").searchParams;
+    const limit = Math.max(1, Math.min(100, Number(q.get("limit")) || 20));
+    res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-store", "Access-Control-Allow-Origin": "*" });
+    res.end(JSON.stringify({ total: leaderboard.size, top: leaderboard.top(limit) }));
     return;
   }
   if (!STATIC_DIR) {
@@ -156,7 +151,6 @@ wss.on("connection", (ws: WebSocket, req) => {
     ws.close(1008, "origen no permitido");
     return;
   }
-  let room: Room | null = null;
   let player: ServerPlayer | null = null;
   let alive = true;
   ws.on("pong", () => (alive = true));
@@ -181,29 +175,23 @@ wss.on("connection", (ws: WebSocket, req) => {
         ws.close();
         return;
       }
-      room = findRoom(typeof msg.room === "string" ? msg.room : undefined);
       if (room.full) {
-        ws.send(JSON.stringify({ t: "error", msg: `Sala llena (${MAX_PLAYERS}/${MAX_PLAYERS})` }));
+        ws.send(JSON.stringify({ t: "error", msg: `Servidor lleno (${MAX_PLAYERS_EFF}/${MAX_PLAYERS_EFF}). Inténtalo en unos minutos.` }));
         ws.close();
         return;
       }
-      player = room.join(ws, msg.name);
-      log(`${player.name} (#${player.id}) entra en ${room.code} (${room.players.size}/${MAX_PLAYERS})`);
+      player = room.join(ws, msg.name, msg.token);
+      log(`${player.name} (#${player.id}${player.pid ? "" : ", sin ranking"}) entra (${room.players.size}/${MAX_PLAYERS_EFF})`);
       return;
     }
-    if (room && player) room.handle(player, msg);
+    if (player) room.handle(player, msg);
   });
 
   ws.on("close", () => {
     clearInterval(hb);
-    if (room && player) {
+    if (player) {
       room.leave(player);
-      log(`${player.name} (#${player.id}) sale de ${room.code} (${room.players.size}/${MAX_PLAYERS})`);
-      if (room.empty) {
-        room.dispose();
-        rooms.delete(room.code);
-        log(`Sala ${room.code} vacía: eliminada`);
-      }
+      log(`${player.name} (#${player.id}) sale (${room.players.size}/${MAX_PLAYERS_EFF})`);
     }
   });
   ws.on("error", () => ws.close());
@@ -214,7 +202,8 @@ server.listen(PORT, HOST, () => log(`Servidor escuchando en ${HOST}:${PORT}${STA
 for (const sig of ["SIGINT", "SIGTERM"] as const) {
   process.on(sig, () => {
     log(`Cerrando (${sig})…`);
-    for (const r of rooms.values()) r.dispose();
+    room.dispose();
+    leaderboard.flush(); // guarda el ranking antes de salir
     // cierra las conexiones abiertas (si no, server.close() esperaría indefinidamente) y sale
     for (const c of wss.clients) c.close(1001, "servidor cerrándose");
     wss.close();

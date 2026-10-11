@@ -1,3 +1,4 @@
+import { playerToken } from "./identity";
 import { PROTOCOL_VERSION, type ClientMsg, type ServerMsg } from "../../../shared/protocol";
 
 /** Cliente WebSocket mínimo: conecta, envía mensajes JSON y entrega los del servidor a un callback. */
@@ -20,7 +21,7 @@ export class NetClient {
     return prod ? `${proto}://${location.host}` : `${proto}://${location.hostname}:8080`;
   }
 
-  connect(url: string, name: string, room: string | undefined, timeoutMs = 6000): Promise<void> {
+  connect(url: string, name: string, timeoutMs = 6000): Promise<void> {
     return new Promise((resolve, reject) => {
       let settled = false;
       let ws: WebSocket;
@@ -42,7 +43,7 @@ export class NetClient {
         reject(new Error(msg));
       };
       const timer = window.setTimeout(() => fail("Tiempo de espera agotado conectando con el servidor"), timeoutMs);
-      ws.onopen = () => this.send({ t: "join", v: PROTOCOL_VERSION, name, room: room || undefined });
+      ws.onopen = () => this.send({ t: "join", v: PROTOCOL_VERSION, name, token: playerToken() });
       ws.onerror = () => fail(`No se pudo conectar con ${url}`);
       ws.onmessage = (e) => {
         let m: ServerMsg;
@@ -70,6 +71,11 @@ export class NetClient {
       };
       this.pingTimer = window.setInterval(() => this.send({ t: "ping", c: performance.now() }), 2000);
     });
+  }
+
+  /** URL HTTP(S) del mismo servidor a partir de la del WebSocket (para la API del ranking). */
+  static httpBase(wsUrl: string): string {
+    return wsUrl.replace(/^ws(s?):/i, "http$1:").replace(/\/+$/, "");
   }
 
   send(m: ClientMsg): void {

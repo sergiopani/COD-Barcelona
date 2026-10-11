@@ -15,15 +15,16 @@ npm ci
 npm run build:prod     # tsc + vite build → dist/ (+ .br/.gz), y empaqueta el servidor → dist-server/index.mjs
 npm start              # node dist-server/index.mjs  →  http://localhost:8080
 ```
-Comprobación: `curl localhost:8080/health` → `{"ok":true,"rooms":0,"players":0,"protocol":1}`. El cliente usa **el mismo origen** para el WebSocket (`ws(s)://<host>`), sin configurar nada.
+Comprobación: `curl localhost:8080/health` → `{"ok":true,"rooms":1,"players":0,"maxPlayers":32,"ranked":0,"protocol":2}`. El cliente usa **el mismo origen** para el WebSocket (`ws(s)://<host>`), sin configurar nada.
 
-Variables de entorno del servidor: ver `.env.example` (`PORT`, `HOST`, `ALLOWED_ORIGINS`, `STATIC_DIR`, `KILL_LIMIT`).
+Variables de entorno del servidor: ver `.env.example` (`PORT`, `HOST`, `ALLOWED_ORIGINS`, `STATIC_DIR`, `KILL_LIMIT`, `MAX_PLAYERS`, `DATA_DIR`).
+**El ranking global se guarda en `DATA_DIR` (`./data/leaderboard.json`): monta esa carpeta en un volumen persistente** o se perderá al recrear el contenedor/servidor.
 Variables del build del cliente: `VITE_SERVER_URL` (servidor de juego en otro origen, p. ej. `wss://juego.midominio.com`) y `VITE_BASE` (subruta, p. ej. `/barcelona-fps/`).
 
 ## 3. Docker
 ```bash
 docker build -t barcelona-fps .
-docker run -d --name bfps -p 8080:8080 -e ALLOWED_ORIGINS=https://juego.midominio.com barcelona-fps
+docker run -d --name bfps -p 8080:8080 -v bfps-data:/app/data -e ALLOWED_ORIGINS=https://juego.midominio.com barcelona-fps
 ```
 > **Sin probar:** el Dockerfile está escrito y revisado pero el daemon de Docker no estaba en marcha en la máquina de desarrollo, así que la imagen no se ha construido ni ejecutado.
 
@@ -63,8 +64,8 @@ WantedBy=multi-user.target
 o **pm2**: `pm2 start dist-server/index.mjs --name barcelona-fps && pm2 save`.
 
 ## 6. Dimensionado y limitaciones de producción
-- El servidor es de **un solo proceso y las salas viven en memoria**: unas decenas de jugadores simultáneos caben de sobra (cada sala = 20 instantáneas/s de ~1 KB por jugador),
-  pero no hay escalado horizontal ni persistencia. Reiniciar el proceso expulsa a los jugadores.
+- El servidor es de **un solo proceso y la sala global vive en memoria**: unas decenas de jugadores simultáneos caben de sobra (20 instantáneas/s de ~1 KB por jugador),
+  pero no hay escalado horizontal; solo el ranking persiste (archivo JSON en `DATA_DIR`). Reiniciar el proceso expulsa a los jugadores.
 - Descarga inicial del cliente: **~23 MB** (Babylon 1,2 MB en Brotli + 21 MB de modelos WebP). Los GLB se cachean un día; los archivos con hash, un año.
 - Sin autenticación ni cuentas, sin reconexión automática, anti-trampas básico (ver `docs/MULTIJUGADOR.md`).
 - Sin CSP configurada (Babylon necesita permisos de blobs/WebGL); si la añades, prueba que cargan los GLB y los shaders.
@@ -79,7 +80,7 @@ o **pm2**: `pm2 start dist-server/index.mjs --name barcelona-fps && pm2 save`.
 | Móviles/tablets | No soportado (necesita ratón y teclado) |
 
 Si el navegador no soporta WebGL2 el juego lo indica en el menú. **Lista de comprobación manual** para quien lo pruebe: 1) la pantalla carga hasta «Jugar»; 2) clic en Jugar bloquea el cursor y Esc lo libera;
-3) WASD/ratón/salto/correr; 4) clic derecho apunta con mira y la rueda cambia 4×/8×; 5) disparo con sonido; 6) en multijugador, dos pestañas en la misma sala se ven y se pueden eliminar; 7) cambiar la calidad en el menú.
+3) WASD/ratón/salto/correr; 4) clic derecho apunta con mira y la rueda cambia 4×/8×; 5) disparo con sonido; 6) en multijugador, dos pestañas en la sala global se ven y se pueden eliminar; 7) cambiar la calidad en el menú.
 
 ## 8. Actualizar modelos o mapa
 - Modelos nuevos: copia el original a `assets-src/<ruta>.glb`, ajusta el trabajo en `scripts/optimize-models.mjs` y ejecuta `npm run optimize:models`.

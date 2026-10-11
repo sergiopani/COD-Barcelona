@@ -5,3 +5,4 @@ assets-src
 .git
 *.log
 .DS_Store
+/data

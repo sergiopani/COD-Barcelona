@@ -5,14 +5,16 @@
  * El cliente solo envía su estado de movimiento (posición/orientación, que el servidor valida) y la intención de
  * disparar/recargar. Los jugadores remotos se renderizan con interpolación (~100 ms de retardo).
  */
-export const PROTOCOL_VERSION = 1;
-export const MAX_PLAYERS = 8;
+export const PROTOCOL_VERSION = 2;
+/** Capacidad por defecto de la sala GLOBAL (configurable en el servidor con MAX_PLAYERS). */
+export const MAX_PLAYERS = 32;
 /** Frecuencia de instantáneas del servidor y de envío de estado del cliente (Hz). */
 export const SERVER_TICK_HZ = 20;
 export const CLIENT_SEND_HZ = 20;
 /** Retardo de interpolación de los jugadores remotos (ms). */
 export const INTERP_DELAY_MS = 100;
-export const KILL_LIMIT = 20;
+/** 0 = sin límite: la sala global es una partida continua. */
+export const KILL_LIMIT = 0;
 export const RESPAWN_SECONDS = 3;
 export const NAME_MAX = 16;
 
@@ -24,8 +26,8 @@ export interface JoinMsg {
   t: "join";
   v: number;
   name: string;
-  /** Código de sala opcional (para jugar con amigos); si falta se asigna automáticamente. */
-  room?: string;
+  /** Token anónimo del navegador: identifica al jugador en el ranking global (el servidor solo guarda su hash). */
+  token?: string;
 }
 /** Estado de movimiento (20 Hz). `p` son los PIES; `ads` = apuntando. */
 export interface StateMsg {
@@ -75,6 +77,9 @@ export interface WelcomeMsg {
   serverTime: number;
   players: PlayerInfo[];
   killLimit: number;
+  maxPlayers: number;
+  /** Tu ranking global actual (null si aún no tienes bajas o no hay token válido). */
+  global: { rank: number; kills: number } | null;
   /** Posición y orientación de aparición asignadas por el servidor. */
   spawn: Vec3;
   yaw: number;
@@ -153,6 +158,13 @@ export interface MatchMsg {
   winner?: number;
   restartIn?: number;
 }
+/** Ranking global de bajas (top 10) + tu posición. Se envía al entrar y cuando cambia. */
+export interface BoardMsg {
+  t: "board";
+  /** [posición, nombre, bajas, muertes, cabezas] */
+  top: [number, string, number, number, number][];
+  you: { rank: number; kills: number; deaths: number; headshots: number; total: number } | null;
+}
 export interface PongMsg {
   t: "pong";
   c: number;
@@ -175,6 +187,7 @@ export type ServerMsg =
   | RespawnMsg
   | CorrectMsg
   | ScoreMsg
+  | BoardMsg
   | MatchMsg
   | PongMsg
   | ErrorMsg;

@@ -81,12 +81,18 @@ export class Game {
       if (locked) this.menu.hide();
       else if (this.started) {
         this.menu.showPause();
-        if (this.session) this.menu.setNote("En multijugador la partida NO se pausa: el servidor sigue en marcha.");
+        if (this.session) {
+          this.menu.setNote("En multijugador la partida NO se pausa: el servidor sigue en marcha.");
+          void this.refreshGlobalBoard();
+        }
       }
     };
     this.input.onLockError = () => this.menu.setNote("El navegador rechazó el bloqueo del ratón. Vuelve a pulsar el botón.");
 
     this.menu.setUrlPlaceholder(NetClient.defaultUrl());
+    this.menu.onModeChange = (mode) => {
+      if (mode === "mp") void this.refreshGlobalBoard();
+    };
     this.scene.executeWhenReady(() => {
       this.menu.ready(() => {
         this.audio.resume(); // el AudioContext solo puede arrancar tras un gesto del usuario
@@ -116,7 +122,7 @@ export class Game {
     if (this.session) {
       this.session.update(dt);
       // marcador con Tab
-      this.hud.setScoreboard(active && this.input.isDown("Tab"), this.session.scoreboardRows(), this.session.myId, this.session.room, this.session.killLimit);
+      this.hud.setScoreboard(active && this.input.isDown("Tab"), this.session.scoreboardRows(), this.session.myId, this.session);
     }
     this.combat.refreshHud();
     // caída fuera del mundo → reaparición
@@ -137,14 +143,29 @@ export class Game {
     }
   }
 
-  /** Conecta con el servidor y entra en una sala. La orden de bloqueo del ratón ya se pidió en el clic. */
+  /** Descarga el top 10 del ranking global (API HTTP del mismo servidor) y lo muestra en el menú. */
+  private async refreshGlobalBoard(): Promise<void> {
+    const url = this.menu.mpSettings.url || NetClient.defaultUrl();
+    try {
+      const ctl = new AbortController();
+      const timer = window.setTimeout(() => ctl.abort(), 4000);
+      const r = await fetch(`${NetClient.httpBase(url)}/api/leaderboard?limit=10`, { signal: ctl.signal });
+      window.clearTimeout(timer);
+      const j = (await r.json()) as { total: number; top: { rank: number; name: string; kills: number; headshots: number }[] };
+      this.menu.showGlobalBoard(j.top, j.total);
+    } catch {
+      this.menu.showGlobalBoard(null);
+    }
+  }
+
+  /** Conecta con el servidor y entra en la sala global. La orden de bloqueo del ratón ya se pidió en el clic. */
   private async startMultiplayer(): Promise<void> {
     const cfg = this.menu.mpSettings;
     const url = cfg.url || NetClient.defaultUrl();
     this.hud.setBanner("Conectando con el servidor…");
     const session = new MultiplayerSession(this.scene, this.lighting, this.player, this.combat, this.hud, this.audio, this.combat.effects);
     try {
-      await session.start(url, cfg.name || "Jugador", cfg.room || undefined);
+      await session.start(url, cfg.name || "Jugador");
     } catch (e) {
       this.hud.setBanner(null);
       session.stop();
@@ -164,7 +185,7 @@ export class Game {
     this.started = true;
     this.menu.lockMode();
     this.hud.setBanner(null);
-    console.info(`[Red] Conectado a ${url} · sala ${session.room} · jugador #${session.myId}`);
+    console.info(`[Red] Conectado a ${url} · sala global · jugador #${session.myId}`);
   }
 
   /** Aplica el perfil actual: resolución interna, sombras, postproceso, SSAO, filtrado, distancia y asfalto mojado. */

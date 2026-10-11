@@ -1,7 +1,6 @@
 import type WebSocket from "ws";
 import {
   KILL_LIMIT,
-  MAX_PLAYERS,
   NAME_MAX,
   RESPAWN_SECONDS,
   SERVER_TICK_HZ,
@@ -14,6 +13,7 @@ import {
 import { EYE_HEIGHT, PLAYER_HP, WEAPON, normalize, rayVsPlayer, spreadDirection, type V3 } from "../../shared/combat";
 import type { WorldCollision } from "../../shared/world";
 import { spawns } from "../../src/game/world/mapLayout";
+import { Leaderboard } from "./Leaderboard";
 
 /** Límites de validación de movimiento. */
 const MAX_SPEED = 7.2; // m/s en llano (correr = 7,0)
@@ -21,7 +21,7 @@ const SPEED_TOLERANCE = 1.6; // margen por jitter de red
 const MAX_REWIND_MS = 400;
 const HISTORY_MS = 1500;
 /** Límite de bajas configurable por entorno (KILL_LIMIT) para pruebas. */
-const KILL_LIMIT_EFF = Number(process.env.KILL_LIMIT) || KILL_LIMIT;
+const KILL_LIMIT_EFF = process.env.KILL_LIMIT !== undefined ? Number(process.env.KILL_LIMIT) || 0 : KILL_LIMIT;
 
 interface Sample {
   t: number;
@@ -54,7 +54,8 @@ export class ServerPlayer {
   shots = 0;
   hitsLanded = 0;
 
-  constructor(readonly id: number, public name: string, readonly ws: WebSocket) {}
+  /** Identificador persistente anónimo (hash del token) o null si el cliente no envió un token válido. */
+  constructor(readonly id: number, public name: string, readonly ws: WebSocket, readonly pid: string | null) {}
 
   info(): PlayerInfo {
     return { id: this.id, name: this.name, kills: this.kills, deaths: this.deaths, alive: this.alive };
@@ -75,7 +76,15 @@ export class Room {
   /** Para pruebas deterministas. */
   rnd: () => number = Math.random;
 
-  constructor(readonly code: string, private readonly world: WorldCollision, readonly isPrivate: boolean) {
+  private boardVersion = -1;
+  private lastBoardAt = 0;
+
+  constructor(
+    readonly code: string,
+    private readonly world: WorldCollision,
+    private readonly board: Leaderboard,
+    readonly maxPlayers: number,
+  ) {
     this.timer = setInterval(() => this.tick(), 1000 / SERVER_TICK_HZ);
   }
 
@@ -83,7 +92,7 @@ export class Room {
     return performance.now() - this.start;
   }
   get full(): boolean {
-    return this.players.size >= MAX_PLAYERS;
+    return this.players.size >= this.maxPlayers;
   }
   get empty(): boolean {
     return this.players.size === 0;
@@ -107,14 +116,34 @@ export class Room {
     return clean || fallback;
   }
 
-  join(ws: WebSocket, name: string): ServerPlayer {
+  join(ws: WebSocket, name: string, token?: unknown): ServerPlayer {
     const id = this.nextId++;
-    const p = new ServerPlayer(id, Room.sanitizeName(name, `Jugador ${id}`), ws);
+    const p = new ServerPlayer(id, Room.sanitizeName(name, `Jugador ${id}`), ws, Leaderboard.idFromToken(token));
     this.players.set(id, p);
     this.spawn(p, false);
-    this.send(p, { t: "welcome", id, room: this.code, serverTime: this.now(), players: [...this.players.values()].map((q) => q.info()), killLimit: KILL_LIMIT_EFF, spawn: [...p.pos] as Vec3, yaw: p.yaw });
+    const mine = this.board.entry(p.pid);
+    this.send(p, {
+      t: "welcome",
+      id,
+      room: this.code,
+      serverTime: this.now(),
+      players: [...this.players.values()].map((q) => q.info()),
+      killLimit: KILL_LIMIT_EFF,
+      maxPlayers: this.maxPlayers,
+      global: mine ? { rank: mine.rank, kills: mine.kills } : null,
+      spawn: [...p.pos] as Vec3,
+      yaw: p.yaw,
+    });
+    this.sendBoard(p);
     this.broadcast({ t: "joined", player: p.info() }, p);
     return p;
+  }
+
+  /** Ranking global (top 10) + posición del jugador. */
+  private sendBoard(p: ServerPlayer): void {
+    const top = this.board.top(10).map((r) => [r.rank, r.name, r.kills, r.deaths, r.headshots] as [number, string, number, number, number]);
+    const me = this.board.entry(p.pid);
+    this.send(p, { t: "board", top, you: me ? { rank: me.rank, kills: me.kills, deaths: me.deaths, headshots: me.headshots, total: me.total } : null });
   }
 
   leave(p: ServerPlayer): void {
@@ -272,10 +301,15 @@ export class Room {
     killer.kills++;
     victim.respawnAt = now + RESPAWN_SECONDS * 1000;
     victim.reloadEnd = 0;
+    // ranking global: no cuenta matar a tu propio navegador (otra pestaña con el mismo token)
+    if (!killer.pid || killer.pid !== victim.pid) {
+      this.board.recordKill(killer.pid, killer.name, zone === "head");
+      this.board.recordDeath(victim.pid);
+    }
     this.broadcast({ t: "kill", killer: killer.id, victim: victim.id, zone, dist });
     this.send(victim, { t: "died", by: killer.id, respawnIn: RESPAWN_SECONDS });
     this.broadcastScore();
-    if (killer.kills >= KILL_LIMIT_EFF && !this.over) {
+    if (KILL_LIMIT_EFF > 0 && killer.kills >= KILL_LIMIT_EFF && !this.over) {
       this.over = true;
       this.overAt = now;
       this.broadcast({ t: "match", state: "over", winner: killer.id, restartIn: 8 });
@@ -346,6 +380,13 @@ export class Room {
       }
       this.broadcast({ t: "match", state: "restart" });
       this.broadcastScore();
+    }
+
+    // ranking global: se difunde como mucho 1 vez por segundo y solo si ha cambiado
+    if (this.board.version !== this.boardVersion && now - this.lastBoardAt > 1000) {
+      this.boardVersion = this.board.version;
+      this.lastBoardAt = now;
+      for (const p of this.players.values()) this.sendBoard(p);
     }
 
     // instantánea (20 Hz)

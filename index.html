@@ -54,7 +54,7 @@
       <div id="ammo"><span id="ammo-mag">5</span><small> / <span id="ammo-res">30</span></small><div id="weapon-name">M1A Francotirador</div></div>
       <div id="health"><div id="health-bar"><i></i></div><span id="health-num">100</span></div>
       <div id="reload-tip" hidden>RECARGANDO…</div>
-      <div id="scoreboard" hidden><h3>Marcador <small id="sb-room"></small></h3><table><thead><tr><th>Jugador</th><th>Bajas</th><th>Muertes</th></tr></thead><tbody id="sb-body"></tbody></table><p id="sb-limit"></p></div>
+      <div id="scoreboard" hidden><h3>Sala global <small id="sb-room"></small></h3><table><thead><tr><th>Jugador</th><th>Bajas</th><th>Muertes</th></tr></thead><tbody id="sb-body"></tbody></table><p id="sb-limit"></p><h3 class="sb-global">Ranking global de bajas <small id="sb-you"></small></h3><table><thead><tr><th>#</th><th>Jugador</th><th>Bajas</th><th>Cabezas</th></tr></thead><tbody id="sb-global"></tbody></table></div>
       <div id="net-banner" hidden></div>
       <div id="death" hidden><h2>ELIMINADO</h2><p>Reapareces en <b id="death-t">3</b> s</p></div>
     </div>
@@ -69,8 +69,12 @@
         </div>
         <div id="mp-fields" hidden>
           <input id="mp-name" type="text" maxlength="16" placeholder="Tu nombre" autocomplete="off" />
-          <input id="mp-room" type="text" maxlength="12" placeholder="Código de sala (opcional)" autocomplete="off" />
           <input id="mp-url" type="text" placeholder="Servidor (ws://…)" autocomplete="off" spellcheck="false" />
+        </div>
+        <div id="mp-board" hidden>
+          <h2>Ranking global de bajas</h2>
+          <ol id="mp-board-list"></ol>
+          <p id="mp-board-note"></p>
         </div>
         <button id="play" disabled>Cargando…</button>
         <p id="status" class="status">Iniciando motor…</p>

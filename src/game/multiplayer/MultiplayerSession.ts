@@ -1,5 +1,5 @@
 import { Vector3 } from "@babylonjs/core";
-import { CLIENT_SEND_HZ, type PlayerInfo, type ServerMsg } from "../../../shared/protocol";
+import { CLIENT_SEND_HZ, type BoardMsg, type PlayerInfo, type ServerMsg } from "../../../shared/protocol";
 import type { AudioManager } from "../audio/AudioManager";
 import type { CombatSystem } from "../combat/CombatSystem";
 import type { PlayerController } from "../player/PlayerController";
@@ -19,7 +19,11 @@ export class MultiplayerSession {
   readonly remotes: RemotePlayers;
   myId = 0;
   room = "";
-  killLimit = 20;
+  killLimit = 0;
+  maxPlayers = 0;
+  /** Ranking global (top 10) y mi posición en él; llegan del servidor. */
+  board: BoardMsg["top"] = [];
+  myGlobal: BoardMsg["you"] = null;
   readonly players = new Map<number, PlayerInfo>();
   private sendTimer = 0;
   private seq = 0;
@@ -46,13 +50,13 @@ export class MultiplayerSession {
     return this.remotes.renderTime();
   }
 
-  async start(url: string, name: string, room: string | undefined): Promise<void> {
+  async start(url: string, name: string): Promise<void> {
     this.net.onMessage = (m) => this.onMessage(m);
     this.net.onClose = (r) => {
       this.hud.setBanner(null);
       this.onDisconnect(r);
     };
-    await this.net.connect(url, name, room);
+    await this.net.connect(url, name);
   }
 
   stop(): void {
@@ -106,6 +110,8 @@ export class MultiplayerSession {
         this.myId = m.id;
         this.room = m.room;
         this.killLimit = m.killLimit;
+        this.maxPlayers = m.maxPlayers;
+        this.myGlobal = m.global ? { rank: m.global.rank, kills: m.global.kills, deaths: 0, headshots: 0, total: 0 } : null;
         this.players.clear();
         for (const p of m.players) this.players.set(p.id, p);
         this.player.teleport(m.spawn[0], m.spawn[1], m.spawn[2], m.yaw);
@@ -164,6 +170,10 @@ export class MultiplayerSession {
       case "score":
         for (const p of m.players) this.players.set(p.id, p);
         this.updateOwnScore();
+        break;
+      case "board":
+        this.board = m.top;
+        this.myGlobal = m.you;
         break;
       case "match":
         if (m.state === "over") this.hud.setBanner(`¡${this.nameOf(m.winner ?? 0)} gana la partida! Nueva partida en ${m.restartIn ?? 8} s`);

@@ -3,8 +3,8 @@
 Shooter en primera persona para navegador (TypeScript + Babylon.js + Vite), ambientado **solo** en la manzana de la
 Sagrada Família y su entorno inmediato (Eixample, Barcelona).
 
-**Estado: FASES 1–5 completadas** — escenario de la Sagrada Família, francotirador con mira, modo individual con bots, multijugador online (hasta 8, servidor
-autoritativo), modelos optimizados y despliegue de producción. Ver `docs/COMBATE.md`, `docs/MULTIJUGADOR.md`, `docs/GRAFICOS.md` y `docs/DESPLIEGUE.md`.
+**Estado: FASES 1–5 completadas** — escenario de la Sagrada Família, francotirador con mira, modo individual con bots, multijugador online (una sala global, ranking global
+persistente de bajas, servidor autoritativo), modelos optimizados y despliegue de producción. Ver `docs/COMBATE.md`, `docs/MULTIJUGADOR.md`, `docs/GRAFICOS.md` y `docs/DESPLIEGUE.md`.
 
 ## Requisitos
 

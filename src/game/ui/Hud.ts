@@ -45,6 +45,8 @@ export class Hud {
   private readonly sbBody = $("sb-body");
   private readonly sbRoom = $("sb-room");
   private readonly sbLimit = $("sb-limit");
+  private readonly sbYou = $("sb-you");
+  private readonly sbGlobal = $("sb-global");
   private readonly banner = $("net-banner");
   private readonly fpsBox = $("fps");
   private lastShownScope = false;
@@ -101,23 +103,38 @@ export class Hud {
     window.setTimeout(() => d.remove(), 4600);
   }
 
-  /** Marcador (mantener Tab en multijugador). */
-  setScoreboard(visible: boolean, rows: { id: number; name: string; kills: number; deaths: number; alive: boolean }[], myId: number, room: string, killLimit: number): void {
+  /** Marcador (mantener Tab en multijugador): jugadores de la sala global + ranking global de bajas. */
+  setScoreboard(
+    visible: boolean,
+    rows: { id: number; name: string; kills: number; deaths: number; alive: boolean }[],
+    myId: number,
+    info: { maxPlayers: number; killLimit: number; board: [number, string, number, number, number][]; myGlobal: { rank: number; kills: number } | null },
+  ): void {
     this.scoreboard.hidden = !visible;
     if (!visible) return;
-    this.sbRoom.textContent = `sala ${room}`;
-    this.sbLimit.textContent = `Primero en ${killLimit} bajas gana`;
+    this.sbRoom.textContent = `${rows.length}${info.maxPlayers ? `/${info.maxPlayers}` : ""} jugadores`;
+    this.sbLimit.textContent = info.killLimit > 0 ? `Primero en ${info.killLimit} bajas gana la partida` : "";
+    this.sbYou.textContent = info.myGlobal ? `tú: #${info.myGlobal.rank} · ${info.myGlobal.kills} bajas` : "tú: sin bajas aún";
+    const cell = (v: string) => {
+      const td = document.createElement("td");
+      td.textContent = v;
+      return td;
+    };
     const sorted = [...rows].sort((a, b) => b.kills - a.kills || a.deaths - b.deaths);
     this.sbBody.replaceChildren(
       ...sorted.map((r) => {
         const tr = document.createElement("tr");
         if (r.id === myId) tr.className = "me";
         if (!r.alive) tr.className += " dead";
-        for (const v of [r.name, String(r.kills), String(r.deaths)]) {
-          const td = document.createElement("td");
-          td.textContent = v;
-          tr.appendChild(td);
-        }
+        tr.append(cell(r.name), cell(String(r.kills)), cell(String(r.deaths)));
+        return tr;
+      }),
+    );
+    this.sbGlobal.replaceChildren(
+      ...info.board.map((b) => {
+        const tr = document.createElement("tr");
+        tr.append(cell(String(b[0])), cell(b[1]), cell(String(b[2])), cell(String(b[4])));
+        if (info.myGlobal && b[0] === info.myGlobal.rank) tr.className = "me";
         return tr;
       }),
     );

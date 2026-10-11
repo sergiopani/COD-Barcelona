@@ -11,18 +11,25 @@ export class MenuScreen {
   private readonly wet = document.getElementById("wet") as HTMLInputElement;
   private readonly mpFields = document.getElementById("mp-fields") as HTMLElement;
   private readonly mpName = document.getElementById("mp-name") as HTMLInputElement;
-  private readonly mpRoom = document.getElementById("mp-room") as HTMLInputElement;
+  private readonly mpBoard = document.getElementById("mp-board") as HTMLElement;
+  private readonly mpBoardList = document.getElementById("mp-board-list") as HTMLElement;
+  private readonly mpBoardNote = document.getElementById("mp-board-note") as HTMLElement;
+  /** Se invoca al cambiar de modo (para cargar el ranking global al elegir multijugador). */
+  onModeChange: (mode: "sp" | "mp") => void = () => {};
   private readonly mpUrl = document.getElementById("mp-url") as HTMLInputElement;
   private onPlay: () => void = () => {};
 
   constructor() {
     this.button.addEventListener("click", () => this.onPlay());
     for (const r of document.querySelectorAll<HTMLInputElement>('input[name="mode"]')) {
-      r.addEventListener("change", () => (this.mpFields.hidden = this.mode !== "mp"));
+      r.addEventListener("change", () => {
+        this.mpFields.hidden = this.mode !== "mp";
+        this.mpBoard.hidden = this.mode !== "mp";
+        this.onModeChange(this.mode);
+      });
     }
     try {
       this.mpName.value = localStorage.getItem("barcelonaFps.name") ?? "";
-      this.mpRoom.value = localStorage.getItem("barcelonaFps.room") ?? "";
       this.mpUrl.value = localStorage.getItem("barcelonaFps.url") ?? "";
     } catch {
       /* sin persistencia */
@@ -34,16 +41,34 @@ export class MenuScreen {
   }
 
   /** Datos del formulario multijugador (y los recuerda en localStorage). */
-  get mpSettings(): { name: string; room: string; url: string } {
-    const v = { name: this.mpName.value.trim(), room: this.mpRoom.value.trim(), url: this.mpUrl.value.trim() };
+  get mpSettings(): { name: string; url: string } {
+    const v = { name: this.mpName.value.trim(), url: this.mpUrl.value.trim() };
     try {
       localStorage.setItem("barcelonaFps.name", v.name);
-      localStorage.setItem("barcelonaFps.room", v.room);
       localStorage.setItem("barcelonaFps.url", v.url);
     } catch {
       /* ignorar */
     }
     return v;
+  }
+
+  /** Pinta el top del ranking global en el menú (null = no disponible). */
+  showGlobalBoard(top: { rank: number; name: string; kills: number; headshots: number }[] | null, total = 0): void {
+    this.mpBoardList.replaceChildren();
+    if (top === null) {
+      this.mpBoardNote.textContent = "Ranking no disponible (¿servidor apagado?)";
+      return;
+    }
+    this.mpBoardNote.textContent = top.length ? `${total} jugador${total === 1 ? "" : "es"} en el ranking` : "Aún no hay bajas registradas: ¡sé el primero!";
+    for (const r of top) {
+      const li = document.createElement("li");
+      const n = document.createElement("span");
+      n.textContent = r.name;
+      const k = document.createElement("b");
+      k.textContent = `${r.kills}`;
+      li.append(n, k);
+      this.mpBoardList.appendChild(li);
+    }
   }
 
   setPlayLabel(label: string): void {
