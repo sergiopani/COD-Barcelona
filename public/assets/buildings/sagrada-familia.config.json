@@ -1,0 +1,10 @@
+{
+  "position": [0, 0.14, 0],
+  "rotationYDeg": 0,
+  "scale": 1,
+  "targetHeight": null,
+  "centerXZ": true,
+  "alignToGround": true,
+  "castShadows": false,
+  "colliders": []
+}

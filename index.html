@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Barcelona FPS — Sagrada Família</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%23b8581f'/><path d='M8 26V12l4-6 4 6v14zM18 26V10l3-5 3 5v16z' fill='%23fff'/></svg>" />
+  </head>
+  <body>
+    <canvas id="game" tabindex="0"></canvas>
+
+    <div id="hud" hidden>
+      <div id="fps">FPS --</div>
+      <div id="crosshair"></div>
+    </div>
+
+    <div id="menu">
+      <div class="panel">
+        <h1>BARCELONA <span>FPS</span></h1>
+        <p class="tagline">Sagrada Família · Eixample, Barcelona</p>
+        <button id="play" disabled>Cargando…</button>
+        <p id="status" class="status">Iniciando motor…</p>
+        <div class="bar"><div id="bar-fill"></div></div>
+        <table class="controls">
+          <tr><td><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></td><td>Moverse</td></tr>
+          <tr><td><kbd>Ratón</kbd></td><td>Mirar</td></tr>
+          <tr><td><kbd>Espacio</kbd></td><td>Saltar</td></tr>
+          <tr><td><kbd>Shift</kbd></td><td>Correr</td></tr>
+          <tr><td><kbd>Esc</kbd></td><td>Pausa / liberar cursor</td></tr>
+        </table>
+        <p class="note" id="note"></p>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

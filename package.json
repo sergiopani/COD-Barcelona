@@ -1,0 +1,21 @@
+{
+  "name": "barcelona-fps",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Barcelona FPS — shooter en primera persona en la manzana de la Sagrada Familia (Babylon.js)",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@babylonjs/core": "9.30.0",
+    "@babylonjs/loaders": "9.30.0"
+  },
+  "devDependencies": {
+    "typescript": "~5.9.3",
+    "vite": "~6.4.4"
+  }
+}
