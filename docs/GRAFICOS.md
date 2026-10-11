@@ -49,7 +49,7 @@ Equipo de prueba: Apple M1 Pro, navegador integrado de la app, 1024×768. Tiempo
 
 | Recurso | Estado | Recomendación |
 | --- | --- | --- |
-| Basílica (GLB) | Ya optimizada: 3 texturas 2048² WebP (≈ 70 MB de VRAM con mipmaps). Nítidas de lejos; de cerca se nota la densidad del atlas, no hay mapa de detalle. | Convertir a KTX2/Basis (−75 % VRAM) con `gltf-transform` y, si se quiere más detalle, un mapa de detalle de piedra tileable (CC0, p. ej. ambientCG). |
+| Basílica (GLB) | Albedo a **4096² WebP afilado** + normal/ORM a 2048² (≈ 130 MB de VRAM con mipmaps) y un **mapa de detalle de piedra** repetible (`stone-detail.webp`, `scripts/make-detail-map.mjs`) que añade granulado y relieve fino al acercarse (`detail` en `sagrada-familia.config.json`; `null` lo desactiva). El normal del modelo original es casi plano y las texturas son suaves (modelo generado), así que el detalle real que se puede añadir es limitado. | Convertir a KTX2/Basis (−75 % VRAM) con `gltf-transform`; bajar el albedo a 2048 en equipos con poca VRAM (`texBase` en `scripts/optimize-models.mjs`). |
 | Palmeras (GLB) | 1 textura PNG 2048², 1 812 triángulos. Correcta. | Añadir variante de palmera seca/otra especie para variedad. |
 | Fachadas, calzada, aceras | 512² procedurales con tile de 2,4–6 m: nítidas y con ORM, pero con patrón reconocible a corta distancia. | Sustituir por texturas PBR reales (albedo/normal/ORM, 1–2K) de estuco, asfalto y baldosa panot. |
 | Coches y mobiliario | Geometría de cajas/prismas sin textura. Es lo más débil visualmente. | Modelos GLB de coches y mobiliario (low-poly PBR). |

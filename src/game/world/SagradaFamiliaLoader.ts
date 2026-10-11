@@ -1,4 +1,4 @@
-import { AbstractMesh, Color3, ImportMeshAsync, Mesh, PBRMaterial, Scene, TransformNode, Vector3 } from "@babylonjs/core";
+import { AbstractMesh, Color3, ImportMeshAsync, Mesh, PBRMaterial, Scene, Texture, TransformNode, Vector3 } from "@babylonjs/core";
 import "@babylonjs/loaders/glTF";
 import { ASSETS, assetUrl } from "../assets";
 import type { CollisionManager } from "./CollisionManager";
@@ -25,6 +25,8 @@ export interface SagradaConfig {
   castShadows: boolean;
   /** Archivo GLB dentro de assets/buildings (por defecto sagrada-familia.glb). Permite alternar entre modelos desde el JSON. */
   model?: string;
+  /** Detalle de piedra repetible superpuesto a la textura (granulado, relieve fino al acercarse). `scale` = repeticiones sobre el atlas del modelo. */
+  detail?: { scale: number; albedo: number; bump: number } | null;
   /** Multiplicador de color base (tinte cálido sobre la textura original). null = sin cambios. */
   tint: [number, number, number] | null;
   /** Colliders simples en planta: centro, tamaño y altura (el modelo NUNCA se usa como colisión). */
@@ -40,6 +42,7 @@ const DEFAULT_CONFIG: SagradaConfig = {
   alignToGround: true,
   castShadows: false,
   tint: null,
+  detail: { scale: 420, albedo: 0.3, bump: 0.7 },
   colliders: [],
 };
 
@@ -90,6 +93,12 @@ export async function loadSagradaFamilia(scene: Scene, mats: MaterialSet, collis
       wrapper.computeWorldMatrix(true);
       const fb = wrapper.getHierarchyBoundingVectors(true);
 
+      const detailTex = config.detail ? new Texture(assetUrl("assets/buildings/stone-detail.webp"), scene, false, false, Texture.TRILINEAR_SAMPLINGMODE) : null;
+      if (detailTex && config.detail) {
+        detailTex.uScale = detailTex.vScale = config.detail.scale;
+        detailTex.wrapU = detailTex.wrapV = Texture.WRAP_ADDRESSMODE;
+        detailTex.anisotropicFilteringLevel = 8;
+      }
       let tris = 0;
       let verts = 0;
       for (const m of result.meshes) {
@@ -97,6 +106,14 @@ export async function loadSagradaFamilia(scene: Scene, mats: MaterialSet, collis
         if (mat instanceof PBRMaterial) {
           if (config.tint) mat.albedoColor = new Color3(config.tint[0], config.tint[1], config.tint[2]);
           mat.environmentIntensity = 1.1;
+          if (detailTex && config.detail) {
+            // detalle de piedra: granulado y relieve fino que aparecen al acercarse (la textura del modelo es de baja frecuencia)
+            mat.detailMap.isEnabled = true;
+            mat.detailMap.texture = detailTex;
+            mat.detailMap.diffuseBlendLevel = config.detail.albedo;
+            mat.detailMap.bumpLevel = config.detail.bump;
+            mat.detailMap.roughnessBlendLevel = 0.3;
+          }
           for (const t of [mat.albedoTexture, mat.bumpTexture, mat.metallicTexture]) if (t) t.anisotropicFilteringLevel = 16;
           console.info(
             `[SagradaFamilia] Material "${mat.name}": metallic=${mat.metallic} roughness=${mat.roughness} ` +
