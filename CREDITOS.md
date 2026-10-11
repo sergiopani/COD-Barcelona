@@ -7,3 +7,4 @@
 - **Maqueta alternativa de la basílica (no activa):** «Sagrada Familia – Barcelona, Spain» de **MiniWorld3D** (Printables), modelo original de Dany Sánchez y Brian Mauricio Sánchez.
   El PDF recibido pide dar crédito; no indica la licencia (verificar uso en juegos). Conversión: `scripts/stl-to-glb.mjs`; copia del GLB en `assets-src/buildings/`.
 - Palmera, rifle M1A y pack de coches: modelos aportados por el usuario (origen y licencia no documentados aquí).
+- **Fachada de la Casa Batlló (edificios del Eixample):** modelo `casa_batllo_-_antoni_gaudi_-_barcelona.glb` aportado por el usuario (el material se llama «tripo_material…», lo que sugiere un modelo generado con IA; autor y licencia desconocidos, verificar antes de publicar). Se hornea a una elevación frontal + mapa de relieve con `scripts/bake-batllo.mjs`.

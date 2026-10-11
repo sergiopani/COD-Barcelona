@@ -1,6 +1,7 @@
 import { Rng } from "../util/rng";
 import { type BatchSet, F, Frame, type RGBA } from "./MeshBatch";
 import * as M from "./FacadeModules";
+import { BATLLO_VARIANTS, BATLLO_WALL_TOP_V, addBatlloFacade, batlloKey, hasBatllo } from "./BatlloFacade";
 import type { Chain, Seg } from "./mapLayout";
 
 /**
@@ -109,28 +110,44 @@ export function buildBuilding(set: BatchSet, chunk: string, spec: BuildingSpec):
   // Masa del edificio (fachada + volumen hacia el interior de la manzana), en un lote "wall" aparte
   // (es el único que proyecta sombra en perfiles BAJO/MEDIO). Tres franjas tonales dan suciedad en la base
   // y bajo la cornisa; el desplazamiento de UV aleatorio evita que todos los edificios repitan el mismo estuco.
+  // Casa Batlló como fachada de las plantas superiores: paleta, espejo y remate propios de cada edificio
+  // (se derivan de la semilla con un generador aparte para no alterar el resto del plan de edificios).
+  const bat = hasBatllo() ? (() => {
+    const br = new Rng(spec.seed ^ 0x9e3779b1);
+    const k = 0.92 + br.next() * 0.16;
+    return { variant: br.int(0, BATLLO_VARIANTS - 1), mirror: br.chance(0.5), fullRoof: br.chance(0.55), tint: [k, k, k * (0.97 + br.next() * 0.06), 1] as RGBA };
+  })() : null;
+  const yTopRelief = H + (bat?.fullRoof ? 1.5 : 0);
+  // con tejado completo la masa de pared acaba donde empieza el tejado del relieve; la cresta del relieve queda por encima
+  const Hm = bat?.fullRoof ? H_GROUND + ((0.845 - BATLLO_WALL_TOP_V) / 0.845) * (yTopRelief - H_GROUND) - 0.3 : H;
+
   const wallBatch = set.get(chunk, "wall");
   wallBatch.uvOffset = [rng.next(), rng.next()];
   const tone = (k: number): RGBA => [spec.wall[0] * k, spec.wall[1] * k, spec.wall[2] * k, 1];
   const baseH = 1.3;
   const topH = 1.6;
   wallBatch.addBox(f, W / 2, baseH / 2, -spec.depth / 2, W, baseH, spec.depth, tone(0.78), F.DOWN | F.UP);
-  wallBatch.addBox(f, W / 2, baseH + (H - baseH - topH) / 2, -spec.depth / 2, W, H - baseH - topH, spec.depth, spec.wall, F.DOWN | F.UP);
-  wallBatch.addBox(f, W / 2, H - topH / 2, -spec.depth / 2, W, topH, spec.depth, tone(0.92), F.DOWN);
+  wallBatch.addBox(f, W / 2, baseH + (Hm - baseH - topH) / 2, -spec.depth / 2, W, Hm - baseH - topH, spec.depth, spec.wall, F.DOWN | F.UP);
+  wallBatch.addBox(f, W / 2, Hm - topH / 2, -spec.depth / 2, W, topH, spec.depth, tone(0.92), F.DOWN);
   wallBatch.uvOffset = [0, 0];
 
-  M.pilaster(ctx, 0.15, H - 0.5);
-  M.pilaster(ctx, W - 0.15, H - 0.5);
-  M.crown(ctx, W, H);
+  if (!bat) {
+    M.pilaster(ctx, 0.15, H - 0.5);
+    M.pilaster(ctx, W - 0.15, H - 0.5);
+  }
+  if (!bat || !bat.fullRoof) M.crown(ctx, W, H);
 
   const yEntresol = H_GROUND;
   const yPrincipal = yEntresol + H_ENTRESOL;
   const yStd0 = yPrincipal + H_PRINCIPAL;
   const yAttic = yStd0 + H_STD * spec.stdFloors;
 
-  M.stringCourse(ctx, W, yEntresol, 0.22, 0.14);
-  M.stringCourse(ctx, W, yPrincipal, 0.18, 0.1);
-  M.stringCourse(ctx, W, yAttic, 0.2, 0.12);
+  if (bat) M.stringCourse(ctx, W, yEntresol, 0.5, 0.75); // repisa que remata la planta baja y tapa el hueco bajo el relieve
+  else M.stringCourse(ctx, W, yEntresol, 0.22, 0.14);
+  if (!bat) {
+    M.stringCourse(ctx, W, yPrincipal, 0.18, 0.1);
+    M.stringCourse(ctx, W, yAttic, 0.2, 0.12);
+  }
 
   const nb = Math.max(2, Math.round(W / 3.4));
   const bw = W / nb;
@@ -147,6 +164,12 @@ export function buildBuilding(set: BatchSet, chunk: string, spec: BuildingSpec):
     } else {
       M.shopfront(ctx, uc, bw, H_GROUND);
     }
+  }
+
+  // ---- Casa Batlló: el relieve sustituye a todo lo que hay por encima de la planta baja
+  if (bat) {
+    addBatlloFacade(set.get(chunk, batlloKey(bat.variant)), f, W, H_GROUND, yTopRelief, bat);
+    return;
   }
 
   // ---- Entresuelo: ventanas bajas con alféizar

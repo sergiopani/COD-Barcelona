@@ -8,6 +8,7 @@ import { BatchSet, F, Frame, type RGBA } from "./MeshBatch";
 import { buildHeightfieldShadowProxy } from "./SagradaShadowProxy";
 import { createWetMaterials, type WetSet } from "./WetSurfaces";
 import { buildPalms, type PalmSet } from "./PalmTrees";
+import { loadBatlloRelief } from "./BatlloFacade";
 import { loadSagradaFamilia, type SagradaResult } from "./SagradaFamiliaLoader";
 import { buildProps } from "./StreetFurniture";
 import { loadVehicles, type VehicleLibrary } from "./VehicleSet";
@@ -63,6 +64,7 @@ export class BarcelonaMap {
     this.meshes.push(...streets.meshes);
 
     await tick("Levantando edificios del Eixample…");
+    await loadBatlloRelief();
     const specs = planBuildings(buildingChains, 1714);
     const bset = new BatchSet(mats.tile);
     for (const spec of specs) buildBuilding(bset, spec.chain.startsWith("cap") ? "caps" : spec.chain, spec);
@@ -140,7 +142,7 @@ export class BarcelonaMap {
       if (!castShadows) continue;
       if (key === "wall") this.lighting.addShadowCaster(mesh, "mass");
       else if (key === "stone") this.lighting.addShadowCaster(mesh, "detail");
-      else if (key !== "railing" && key !== "glass" && key !== "marking" && key !== "stucco" && key !== "plain" && key !== "shutter" && key !== "roller" && key !== "awning" && key !== "signText" && key !== "numText") {
+      else if (key !== "railing" && key !== "glass" && key !== "marking" && key !== "stucco" && key !== "plain" && key !== "shutter" && key !== "roller" && key !== "awning" && key !== "signText" && key !== "numText" && !key.startsWith("batllo")) {
         this.lighting.addShadowCaster(mesh, "prop");
       }
     }

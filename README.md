@@ -101,6 +101,15 @@ __game.tp(x, z, yawGrados) // teletransporte para inspeccionar zonas
 - Texturas 100 % procedurales; sustituibles más adelante por texturas PBR reales.
 - El bundle de Babylon (~7,6 MB, 1,7 MB gzip) aún no está optimizado con imports profundos (Fase 4/5).
 
+## Casa Batlló en los edificios
+
+Todos los edificios del Eixample usan la fachada de la **Casa Batlló** (modelo 3D aportado por el usuario) por encima de la planta baja, que sigue siendo procedural (tiendas, rótulos, portales).
+Como el modelo original tiene 1,9 M de triángulos, `npm run bake:batllo` lo hornea a una textura frontal con silueta alfa en **4 paletas** (mosaico azul/verde, dorado, verde, rosado)
+y a un mapa de relieve; el juego genera de ahí una malla de ~5 k triángulos por edificio (`src/game/world/BatlloFacade.ts`) donde los balcones sobresalen de verdad.
+Cada edificio varía paleta, espejo, remate (tejado completo con dragón y torre, o cortado con cornisa), proporciones y brillo según su semilla.
+Sin los archivos `casa-batllo-*` el juego vuelve a las fachadas procedurales antiguas. Limitaciones: el relieve es una elevación frontal (no un modelo completo: de lado se ve como una lámina con profundidad),
+las proporciones se estiran para adaptarse al ancho de cada edificio y las sombras proyectadas no incluyen el relieve.
+
 ## Créditos de datos
 
 Ver `CREDITOS.md` (ICGC para la basílica; MiniWorld3D para la maqueta alternativa).

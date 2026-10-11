@@ -1,4 +1,5 @@
 import { Color3, DynamicTexture, PBRMaterial, Scene, Texture } from "@babylonjs/core";
+import { BATLLO_TEXTURES, BATLLO_VARIANTS, batlloKey } from "./BatlloFacade";
 
 /**
  * Materiales PBR con texturas 100 % procedurales (sin descargas externas).
@@ -23,7 +24,11 @@ export type MatKey =
   | "marking"
   | "garden"
   | "foliage"
-  | "trunk";
+  | "trunk"
+  | "batllo0"
+  | "batllo1"
+  | "batllo2"
+  | "batllo3";
 
 /** Nombres de comercios y números de portal del atlas de rótulos (la disposición debe coincidir con FacadeModules). */
 export const SIGN_NAMES = [
@@ -390,7 +395,25 @@ export function createMaterials(scene: Scene): MaterialSet {
     garden: pbr(scene, "garden", { tex: gardenTex, roughness: 0.95 }),
     foliage: pbr(scene, "foliage", { tex: foliageTex, roughness: 0.8 }),
     trunk: pbr(scene, "trunk", { tex: trunkTex, roughness: 0.9 }),
+    batllo0: pbr(scene, "batllo0", { roughness: 0.7 }),
+    batllo1: pbr(scene, "batllo1", { roughness: 0.7 }),
+    batllo2: pbr(scene, "batllo2", { roughness: 0.7 }),
+    batllo3: pbr(scene, "batllo3", { roughness: 0.7 }),
   } satisfies Record<MatKey, PBRMaterial>;
+
+  // Fachadas de la Casa Batlló: textura horneada con silueta alfa (4 paletas). Se cargan como imágenes normales.
+  for (let i = 0; i < BATLLO_VARIANTS; i++) {
+    const m = mat[batlloKey(i) as MatKey];
+    const t = new Texture(BATLLO_TEXTURES[i], scene, false, true, Texture.TRILINEAR_SAMPLINGMODE);
+    t.hasAlpha = true;
+    t.wrapU = t.wrapV = Texture.CLAMP_ADDRESSMODE;
+    t.anisotropicFilteringLevel = 8;
+    m.albedoTexture = t;
+    m.useAlphaFromAlbedoTexture = true;
+    m.transparencyMode = PBRMaterial.PBRMATERIAL_ALPHATEST;
+    m.alphaCutOff = 0.5;
+    m.backFaceCulling = true;
+  }
 
   // Cristal: dieléctrico con Fresnel (IOR 1,5): sutil de frente, reflectante a ángulos rasantes.
   mat.glass.indexOfRefraction = 1.52;
@@ -424,6 +447,10 @@ export function createMaterials(scene: Scene): MaterialSet {
     garden: 6,
     foliage: 3,
     trunk: 2,
+    batllo0: 1,
+    batllo1: 1,
+    batllo2: 1,
+    batllo3: 1,
   };
 
   const panot = pbr(scene, "panot", { tex: panotTex, roughness: 0.82 });
