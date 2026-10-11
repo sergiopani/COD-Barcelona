@@ -28,6 +28,10 @@ Pulsa **Jugar** (el cursor solo se bloquea tras ese clic). **Esc** libera el cur
 | Shift | Correr |
 | Esc | Pausa / liberar cursor |
 
+En el menú inicial/pausa: **Calidad gráfica** (Bajo/Medio/Alto) y **Asfalto mojado**; ver `docs/GRAFICOS.md`.
+
+Gráficos: `docs/GRAFICOS.md` (perfiles, medidas, texturas recomendadas). HDR opcional: `public/assets/env/README.txt`.
+
 Otros comandos: `npm run build` (typecheck + build de producción en `dist/`), `npm run preview`, `npm run typecheck`.
 
 ## La Sagrada Família (modelo 3D)
@@ -55,7 +59,10 @@ src/game/world/PalmTrees.ts       palmeras desde public/assets/props/palm-tree.g
 src/game/world/SagradaFamilia*.ts carga del GLB + basílica provisional
 src/game/world/CollisionManager.ts colliders invisibles (geometría física separada de la visual)
 src/game/world/Materials.ts       materiales PBR con texturas procedurales
-src/game/world/Lighting.ts        sol, cielo, entorno, sombras en cascada, post-proceso
+src/game/world/Lighting.ts        sol, sombras en cascada, post-proceso, SSAO2/SSR, aplicación de perfiles
+src/game/graphics/               perfiles gráficos (GraphicsSettings) y cielo + IBL (Environment)
+src/game/world/WetSurfaces.ts     asfalto mojado con charcos (opcional)
+src/game/world/SagradaShadowProxy.ts  proxy de sombra de la basílica
 src/game/world/MeshBatch.ts       acumulador de geometría por material (pocos draw calls)
 src/game/debug/selfTest.ts        pruebas automáticas de colisión (ver abajo)
 docs/MAPA.md                      qué es aproximado y convenciones del mapa

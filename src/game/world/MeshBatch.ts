@@ -67,6 +67,9 @@ export class MeshBatch {
     this.indices.push(base, base + 1, base + 2, base, base + 2, base + 3);
   }
 
+  /** Desplazamiento de UV (en repeticiones de textura) para romper la repetición entre edificios. */
+  uvOffset: [number, number] = [0, 0];
+
   /** Caja alineada con el Frame. (cu,cv,cw) = centro, (su,sv,sw) = tamaño. */
   addBox(
     f: Frame,
@@ -80,6 +83,8 @@ export class MeshBatch {
     skip = 0,
   ): void {
     const t = 1 / this.tileSize;
+    const [ox, oy] = this.uvOffset;
+    const UV = (a: number, b: number): [number, number] => [a * t + ox, b * t + oy];
     const u0 = cu - su / 2,
       u1 = cu + su / 2,
       v0 = cv - sv / 2,
@@ -89,17 +94,17 @@ export class MeshBatch {
     const nU: P3 = [f.ux, 0, f.uz];
     const nW: P3 = [f.nx, 0, f.nz];
     if (!(skip & F.FRONT))
-      this.addQuad([f.pt(u0, v0, w1), f.pt(u1, v0, w1), f.pt(u1, v1, w1), f.pt(u0, v1, w1)], nW, [[u0 * t, v0 * t], [u1 * t, v0 * t], [u1 * t, v1 * t], [u0 * t, v1 * t]], color);
+      this.addQuad([f.pt(u0, v0, w1), f.pt(u1, v0, w1), f.pt(u1, v1, w1), f.pt(u0, v1, w1)], nW, [UV(u0, v0), UV(u1, v0), UV(u1, v1), UV(u0, v1)], color);
     if (!(skip & F.BACK))
-      this.addQuad([f.pt(u0, v0, w0), f.pt(u1, v0, w0), f.pt(u1, v1, w0), f.pt(u0, v1, w0)], [-nW[0], 0, -nW[2]], [[u0 * t, v0 * t], [u1 * t, v0 * t], [u1 * t, v1 * t], [u0 * t, v1 * t]], color);
+      this.addQuad([f.pt(u0, v0, w0), f.pt(u1, v0, w0), f.pt(u1, v1, w0), f.pt(u0, v1, w0)], [-nW[0], 0, -nW[2]], [UV(u0, v0), UV(u1, v0), UV(u1, v1), UV(u0, v1)], color);
     if (!(skip & F.RIGHT))
-      this.addQuad([f.pt(u1, v0, w0), f.pt(u1, v0, w1), f.pt(u1, v1, w1), f.pt(u1, v1, w0)], nU, [[w0 * t, v0 * t], [w1 * t, v0 * t], [w1 * t, v1 * t], [w0 * t, v1 * t]], color);
+      this.addQuad([f.pt(u1, v0, w0), f.pt(u1, v0, w1), f.pt(u1, v1, w1), f.pt(u1, v1, w0)], nU, [UV(w0, v0), UV(w1, v0), UV(w1, v1), UV(w0, v1)], color);
     if (!(skip & F.LEFT))
-      this.addQuad([f.pt(u0, v0, w0), f.pt(u0, v0, w1), f.pt(u0, v1, w1), f.pt(u0, v1, w0)], [-nU[0], 0, -nU[2]], [[w0 * t, v0 * t], [w1 * t, v0 * t], [w1 * t, v1 * t], [w0 * t, v1 * t]], color);
+      this.addQuad([f.pt(u0, v0, w0), f.pt(u0, v0, w1), f.pt(u0, v1, w1), f.pt(u0, v1, w0)], [-nU[0], 0, -nU[2]], [UV(w0, v0), UV(w1, v0), UV(w1, v1), UV(w0, v1)], color);
     if (!(skip & F.UP))
-      this.addQuad([f.pt(u0, v1, w0), f.pt(u1, v1, w0), f.pt(u1, v1, w1), f.pt(u0, v1, w1)], [0, 1, 0], [[u0 * t, w0 * t], [u1 * t, w0 * t], [u1 * t, w1 * t], [u0 * t, w1 * t]], color);
+      this.addQuad([f.pt(u0, v1, w0), f.pt(u1, v1, w0), f.pt(u1, v1, w1), f.pt(u0, v1, w1)], [0, 1, 0], [UV(u0, w0), UV(u1, w0), UV(u1, w1), UV(u0, w1)], color);
     if (!(skip & F.DOWN))
-      this.addQuad([f.pt(u0, v0, w0), f.pt(u1, v0, w0), f.pt(u1, v0, w1), f.pt(u0, v0, w1)], [0, -1, 0], [[u0 * t, w0 * t], [u1 * t, w0 * t], [u1 * t, w1 * t], [u0 * t, w1 * t]], color);
+      this.addQuad([f.pt(u0, v0, w0), f.pt(u1, v0, w0), f.pt(u1, v0, w1), f.pt(u0, v0, w1)], [0, -1, 0], [UV(u0, w0), UV(u1, w0), UV(u1, w1), UV(u0, w1)], color);
   }
 
   /** Panel vertical orientado hacia fuera con UV 0..1 (para texturas de ventana, persiana, reja…). */

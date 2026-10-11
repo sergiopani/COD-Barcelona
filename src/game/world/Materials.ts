@@ -6,6 +6,7 @@ import { Color3, DynamicTexture, PBRMaterial, Scene, Texture } from "@babylonjs/
  */
 export type MatKey =
   | "stucco"
+  | "wall"
   | "stone"
   | "concrete"
   | "railing"
@@ -82,6 +83,9 @@ interface Texel {
   a?: number;
   /** Altura 0..1 para el mapa de normales. */
   h: number;
+  /** Rugosidad 0..1 y oclusión ambiental 0..1 (si algún texel las define se genera textura ORM). */
+  rough?: number;
+  ao?: number;
 }
 
 function bake(
@@ -91,14 +95,22 @@ function bake(
   shade: (u: number, v: number) => Texel,
   normalStrength = 2,
   hasAlpha = false,
-): { albedo: DynamicTexture; normal: DynamicTexture | null } {
+): { albedo: DynamicTexture; normal: DynamicTexture | null; orm: DynamicTexture | null } {
   const albedo = new DynamicTexture(name + "_a", { width: size, height: size }, scene, true, Texture.TRILINEAR_SAMPLINGMODE);
   const ctxA = albedo.getContext() as CanvasRenderingContext2D;
   const img = ctxA.createImageData(size, size);
   const height = new Float32Array(size * size);
+  let rough: Float32Array | null = null;
+  let aoMap: Float32Array | null = null;
   for (let y = 0; y < size; y++) {
     for (let x = 0; x < size; x++) {
       const t = shade(x / size, y / size);
+      if (t.rough !== undefined) {
+        rough ??= new Float32Array(size * size).fill(1);
+        aoMap ??= new Float32Array(size * size).fill(1);
+        rough[y * size + x] = t.rough;
+        aoMap[y * size + x] = t.ao ?? 1;
+      }
       const i = (y * size + x) * 4;
       img.data[i] = Math.max(0, Math.min(255, t.r * 255));
       img.data[i + 1] = Math.max(0, Math.min(255, t.g * 255));
@@ -136,11 +148,28 @@ function bake(
     normal.anisotropicFilteringLevel = 8;
     normal.update(false);
   }
-  return { albedo, normal };
+  // ORM: R = oclusión ambiental, G = rugosidad, B = metalicidad (0 en materiales no metálicos)
+  let orm: DynamicTexture | null = null;
+  if (rough && aoMap) {
+    orm = new DynamicTexture(name + "_orm", { width: size, height: size }, scene, true, Texture.TRILINEAR_SAMPLINGMODE);
+    const ctxO = orm.getContext() as CanvasRenderingContext2D;
+    const oImg = ctxO.createImageData(size, size);
+    for (let i = 0; i < size * size; i++) {
+      oImg.data[i * 4] = aoMap[i] * 255;
+      oImg.data[i * 4 + 1] = rough[i] * 255;
+      oImg.data[i * 4 + 2] = 0;
+      oImg.data[i * 4 + 3] = 255;
+    }
+    ctxO.putImageData(oImg, 0, 0);
+    orm.wrapU = orm.wrapV = Texture.WRAP_ADDRESSMODE;
+    orm.anisotropicFilteringLevel = 8;
+    orm.update(false);
+  }
+  return { albedo, normal, orm };
 }
 
 function pbr(scene: Scene, name: string, opts: {
-  tex?: { albedo: DynamicTexture; normal: DynamicTexture | null };
+  tex?: { albedo: DynamicTexture; normal: DynamicTexture | null; orm: DynamicTexture | null };
   color?: [number, number, number];
   metallic?: number;
   roughness?: number;
@@ -157,6 +186,14 @@ function pbr(scene: Scene, name: string, opts: {
       m.bumpTexture = opts.tex.normal;
       m.bumpTexture.level = 1;
     }
+  }
+  if (opts.tex?.orm) {
+    m.metallicTexture = opts.tex.orm;
+    m.useRoughnessFromMetallicTextureGreen = true;
+    m.useMetallnessFromMetallicTextureBlue = true;
+    m.useAmbientOcclusionFromMetallicTextureRed = true;
+    m.metallic = 1; // multiplicadores: los valores reales vienen de la textura ORM
+    m.roughness = 1;
   }
   if (opts.alphaTest) {
     m.transparencyMode = PBRMaterial.PBRMATERIAL_ALPHATEST;
@@ -179,7 +216,7 @@ export function createMaterials(scene: Scene): MaterialSet {
     const g = vnoise(u, v, 128, 5);
     const stain = fbm(u, v * 0.5, 3, 3, 9);
     const k = 0.88 + (n - 0.5) * 0.18 + (g - 0.5) * 0.05 - stain * 0.04;
-    return { r: k, g: k, b: k, h: n * 0.35 + g * 0.65 };
+    return { r: k, g: k, b: k, h: n * 0.35 + g * 0.65, rough: 0.86 + (g - 0.5) * 0.12 + stain * 0.06, ao: 0.82 + n * 0.18 };
   }, 1.4);
 
   // Piedra arenisca con sillares.
@@ -194,14 +231,14 @@ export function createMaterials(scene: Scene): MaterialSet {
     const mortar = lv < 0.035 || lv > 0.975 || cu < 0.015 || cu > 0.99 ? 1 : 0;
     const shade = 0.9 + hash2(col, row, 3) * 0.16 + (fbm(u, v, 6, 4, 4) - 0.5) * 0.14;
     const k = mortar ? 0.74 : shade;
-    return { r: 0.92 * k, g: 0.84 * k, b: 0.7 * k, h: mortar ? 0 : 0.5 + (fbm(u, v, 16, 3, 5) - 0.5) * 0.5 };
+    return { r: 0.92 * k, g: 0.84 * k, b: 0.7 * k, h: mortar ? 0 : 0.5 + (fbm(u, v, 16, 3, 5) - 0.5) * 0.5, rough: mortar ? 1 : 0.8 + hash2(col, row, 11) * 0.12, ao: mortar ? 0.45 : 0.9 + hash2(col, row, 12) * 0.1 };
   }, 2.2);
 
   const concreteTex = bake(scene, "concrete", S, (u, v) => {
     const n = fbm(u, v, 6, 5, 21);
     const pores = vnoise(u, v, 96, 31) > 0.86 ? 0.82 : 1;
     const k = (0.56 + (n - 0.5) * 0.22) * pores;
-    return { r: k, g: k, b: k * 0.98, h: n * 0.5 + (pores < 1 ? 0 : 0.5) };
+    return { r: k, g: k, b: k * 0.98, h: n * 0.5 + (pores < 1 ? 0 : 0.5), rough: 0.88 + (n - 0.5) * 0.1, ao: pores < 1 ? 0.6 : 0.9 + n * 0.1 };
   }, 1.8);
 
   // Panot de Barcelona: baldosa gris con relieve circular.
@@ -216,22 +253,22 @@ export function createMaterials(scene: Scene): MaterialSet {
     const ring = Math.abs(d - 0.3) < 0.035 || Math.abs(d - 0.12) < 0.03 ? 1 : 0;
     const tint = 0.5 + hash2(ix, iy, 8) * 0.09 + (fbm(u, v, 16, 3, 7) - 0.5) * 0.06;
     const k = grout ? 0.3 : tint - ring * 0.05;
-    return { r: k, g: k, b: k * 0.97, h: grout ? 0 : 0.6 + ring * 0.4 };
+    return { r: k, g: k, b: k * 0.97, h: grout ? 0 : 0.6 + ring * 0.4, rough: grout ? 1 : 0.78 + ring * 0.08 + hash2(ix, iy, 9) * 0.08, ao: grout ? 0.4 : 1 };
   }, 2.4);
 
   const asphaltTex = bake(scene, "asphalt", S, (u, v) => {
     const big = fbm(u, v, 4, 4, 41);
     const grain = vnoise(u, v, 192, 43);
     const chip = vnoise(u, v, 96, 47) > 0.9 ? 0.09 : 0;
-    const k = 0.27 + (big - 0.5) * 0.08 + (grain - 0.5) * 0.08 + chip;
-    return { r: k, g: k, b: k * 1.02, h: grain * 0.8 + chip * 4 };
+    const k = 0.34 + (big - 0.5) * 0.09 + (grain - 0.5) * 0.08 + chip;
+    return { r: k, g: k, b: k * 1.02, h: grain * 0.55 + chip * 2.5, rough: 0.82 + (grain - 0.5) * 0.14 - chip * 1.2 + (big - 0.5) * 0.1, ao: 0.85 + grain * 0.15 };
   }, 2.0);
 
   const curbTex = bake(scene, "curb", 256, (u, v) => {
     const n = fbm(u, v, 6, 4, 51);
     const joint = (u * 4) % 1 < 0.015 ? 0.7 : 1;
     const k = (0.6 + (n - 0.5) * 0.2) * joint;
-    return { r: k, g: k * 0.99, b: k * 0.95, h: n };
+    return { r: k, g: k * 0.99, b: k * 0.95, h: n, rough: 0.8 + (n - 0.5) * 0.15, ao: joint < 1 ? 0.5 : 1 };
   }, 1.5);
 
   // Reja de forja (alpha): barrotes verticales con travesaños.
@@ -286,14 +323,17 @@ export function createMaterials(scene: Scene): MaterialSet {
     return { r: k, g: k * 0.93, b: k * 0.8, h: n };
   }, 1.6);
 
+  const stuccoMat = pbr(scene, "stucco", { tex: stuccoTex, roughness: 0.93 });
   const mat = {
-    stucco: pbr(scene, "stucco", { tex: stuccoTex, roughness: 0.93 }),
+    stucco: stuccoMat,
+    wall: stuccoMat, // masas de pared (lote aparte para las sombras), mismo material
+
     stone: pbr(scene, "stone", { tex: stoneTex, roughness: 0.88 }),
     concrete: pbr(scene, "concrete", { tex: concreteTex, roughness: 0.9 }),
     railing: pbr(scene, "railing", { tex: railTex, metallic: 0.6, roughness: 0.5, alphaTest: true, double: true }),
     shutter: pbr(scene, "shutter", { tex: shutterTex, roughness: 0.7 }),
     roller: pbr(scene, "roller", { tex: rollerTex, metallic: 0.55, roughness: 0.5 }),
-    glass: pbr(scene, "glass", { color: [0.09, 0.13, 0.17], metallic: 0.85, roughness: 0.06 }),
+    glass: pbr(scene, "glass", { color: [0.05, 0.07, 0.09], metallic: 0.2, roughness: 0.05 }),
     iron: pbr(scene, "iron", { color: [0.06, 0.065, 0.065], metallic: 0.7, roughness: 0.45 }),
     dark: pbr(scene, "dark", { color: [0.03, 0.03, 0.03], roughness: 0.85 }),
     paint: pbr(scene, "paint", { color: [1, 1, 1], metallic: 0.45, roughness: 0.28 }),
@@ -305,11 +345,21 @@ export function createMaterials(scene: Scene): MaterialSet {
     trunk: pbr(scene, "trunk", { tex: trunkTex, roughness: 0.9 }),
   } satisfies Record<MatKey, PBRMaterial>;
 
+  // Cristal: dieléctrico con Fresnel (IOR 1,5): sutil de frente, reflectante a ángulos rasantes.
+  mat.glass.indexOfRefraction = 1.52;
+  mat.glass.environmentIntensity = 1.15;
+  // Pintura de coche con capa transparente (clear coat).
+  mat.paint.clearCoat.isEnabled = true;
+  mat.paint.clearCoat.intensity = 0.7;
+  mat.paint.clearCoat.roughness = 0.08;
+  mat.paint.metallic = 0.5;
+  mat.paint.roughness = 0.35;
   mat.marking.zOffset = -4;
   mat.marking.backFaceCulling = true;
 
   const tile: Record<MatKey, number> = {
     stucco: 4,
+    wall: 4,
     stone: 4,
     concrete: 3,
     railing: 1,
@@ -329,6 +379,7 @@ export function createMaterials(scene: Scene): MaterialSet {
 
   const panot = pbr(scene, "panot", { tex: panotTex, roughness: 0.82 });
   const asphalt = pbr(scene, "asphalt", { tex: asphaltTex, roughness: 0.95 });
+  if (asphalt.bumpTexture) asphalt.bumpTexture.level = 0.6;
   const curbStone = pbr(scene, "curbStone", { tex: curbTex, roughness: 0.85 });
   for (const m of [panot, asphalt, curbStone]) m.environmentIntensity = 1;
 
@@ -339,7 +390,7 @@ export function createMaterials(scene: Scene): MaterialSet {
     asphalt,
     curbStone,
     dispose() {
-      for (const m of Object.values(mat)) m.dispose(true, true);
+      for (const m of new Set(Object.values(mat))) m.dispose(true, true);
       panot.dispose(true, true);
       asphalt.dispose(true, true);
       curbStone.dispose(true, true);

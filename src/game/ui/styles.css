@@ -47,3 +47,12 @@ kbd {
   position: absolute; left: 50%; top: 50%; width: 4px; height: 4px; margin: -2px 0 0 -2px; border-radius: 50%;
   background: rgba(255,255,255,0.85); box-shadow: 0 0 0 1px rgba(0,0,0,0.5);
 }
+
+.settings { display: flex; gap: 22px; justify-content: center; align-items: center; margin: 0 0 20px; font-size: 13px; }
+.settings label { display: inline-flex; gap: 8px; align-items: center; opacity: 0.92; }
+.settings select {
+  font: inherit; color: var(--ink); background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.3);
+  border-radius: 4px; padding: 4px 8px;
+}
+.settings select option { color: #111; }
+.settings input[type="checkbox"] { accent-color: var(--accent); width: 15px; height: 15px; }

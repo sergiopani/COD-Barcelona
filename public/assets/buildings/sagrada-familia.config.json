@@ -6,5 +6,6 @@
   "centerXZ": true,
   "alignToGround": true,
   "castShadows": false,
+  "tint": [1.12, 1.0, 0.84],
   "colliders": []
 }

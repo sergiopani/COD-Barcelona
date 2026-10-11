@@ -167,6 +167,27 @@ function sign(set: BatchSet, f: Frame, x: number, z: number): ColBox {
   return { sx: 0.2, sy: 2.5, sz: 0.2 };
 }
 
+function terrace(set: BatchSet, f: Frame, rng: Rng, x: number, z: number): ColBox {
+  const plain = set.get(CHUNK, "plain");
+  const iron = set.get(CHUNK, "iron");
+  const col = rng.pick<RGBA>([[0.8, 0.15, 0.1, 1], [0.15, 0.4, 0.25, 1], [0.92, 0.85, 0.6, 1], [0.2, 0.3, 0.6, 1]]);
+  for (const du of [-1.0, 1.0]) {
+    // mesa redonda
+    iron.addCylinder(x + f.ux * du, 0.14, z + f.uz * du, 0.05, 0.05, 0.72, 6, [1, 1, 1, 1], false);
+    plain.addBox(f, du, 0.88, 0, 0.7, 0.04, 0.7, [0.85, 0.82, 0.75, 1]);
+    // dos sillas enfrentadas
+    for (const dw of [-0.6, 0.6]) {
+      plain.addBox(f, du, 0.5, dw, 0.42, 0.05, 0.42, [0.2, 0.17, 0.14, 1]);
+      plain.addBox(f, du, 0.78, dw + Math.sign(dw) * 0.2, 0.42, 0.5, 0.04, [0.2, 0.17, 0.14, 1]);
+      for (const sx of [-0.18, 0.18]) for (const sz of [-0.18, 0.18]) iron.addBox(f, du + sx, 0.25, dw + sz, 0.03, 0.5, 0.03, [1, 1, 1, 1]);
+    }
+  }
+  // sombrilla entre las dos mesas
+  iron.addCylinder(x, 0.14, z, 0.04, 0.04, 2.5, 6, [1, 1, 1, 1], false);
+  plain.addEllipsoid(x, 2.6, z, 1.7, 0.3, 1.7, 10, 3, col);
+  return { sx: 3.2, sy: 1.0, sz: 1.7 };
+}
+
 function planter(set: BatchSet, f: Frame, rng: Rng, x: number, z: number): ColBox {
   set.get(CHUNK, "stone").addBox(f, 0, 0.5, 0, 2.0, 0.7, 0.8, [1.05, 1.0, 0.95, 1]);
   const leaf = set.get(CHUNK, "foliage");
@@ -214,6 +235,9 @@ export function buildProps(set: BatchSet, props: Prop[], collisions: CollisionMa
         break;
       case "sign":
         col = sign(set, f, p.x, p.z);
+        break;
+      case "terrace":
+        col = terrace(set, f, rng, p.x, p.z);
         break;
       case "planter":
         col = planter(set, f, rng, p.x, p.z);

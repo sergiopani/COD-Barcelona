@@ -172,7 +172,7 @@ for (const sgn of [-1, 1]) {
 
 // ---------------------------------------------------------------- mobiliario y vehículos
 
-export type PropKind = "tree" | "lamp" | "bench" | "bin" | "bollard" | "trafficLight" | "sign" | "planter" | "car" | "van" | "moto";
+export type PropKind = "tree" | "lamp" | "bench" | "bin" | "bollard" | "trafficLight" | "sign" | "planter" | "car" | "van" | "moto" | "terrace";
 
 export interface Prop {
   kind: PropKind;
@@ -236,6 +236,24 @@ for (const chain of [centerChain, ...outerChains]) {
         const p = at(t, 3.9);
         addProp("planter", p.x, p.z, seg.ux, seg.uz, true);
       }
+    }
+  }
+}
+
+// Terrazas de bar (mesas, sillas y sombrilla) frente a algunos comercios; sirven de cobertura baja.
+// En cada tramo se prueban posiciones aleatorias libres (la acera ya tiene árboles, farolas y bancos).
+for (const chain of outerChains) {
+  for (const seg of chain.segs) {
+    if (seg.kind !== "straight" || seg.len < 26) continue;
+    let placed = 0;
+    for (let attempt = 0; attempt < 24 && placed < 2; attempt++) {
+      const t = rng.range(8, seg.len - 8);
+      const x = seg.a.x + seg.ux * t + seg.nx * 1.9;
+      const z = seg.a.z + seg.uz * t + seg.nz * 1.9;
+      if (nearCrosswalk(x, z, 3)) continue;
+      if (props.some((p) => Math.hypot(p.x - x, p.z - z) < (p.kind === "tree" ? 2.6 : 2.4))) continue;
+      addProp("terrace", x, z, seg.ux, seg.uz, true);
+      placed++;
     }
   }
 }

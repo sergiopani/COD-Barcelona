@@ -5,166 +5,226 @@ import {
   CascadedShadowGenerator,
   DefaultRenderingPipeline,
   DirectionalLight,
-  Effect,
   HemisphericLight,
   ImageProcessingConfiguration,
   Mesh,
-  MeshBuilder,
-  ReflectionProbe,
-  RenderTargetTexture,
   Scene,
-  ShaderMaterial,
+  SSAO2RenderingPipeline,
+  SSRRenderingPipeline,
   Vector3,
 } from "@babylonjs/core";
+import { createEnvironment, type EnvironmentRig } from "../graphics/Environment";
+import type { GraphicsProfile } from "../graphics/GraphicsSettings";
 
 /**
- * Sol, cielo procedural, entorno PBR (sonda de reflexión del cielo), sombras en cascada,
- * niebla suave y post-proceso (MSAA/FXAA, ACES, bloom sutil).
+ * Sol, sombras en cascada, post-proceso y oclusión ambiental. Todo lo que cambia con el perfil
+ * gráfico se aplica en `applyProfile` sin recrear materiales ni geometría.
  */
+export type CasterKind = "mass" | "detail" | "prop" | "proxy";
+
 export interface LightingRig {
   sun: DirectionalLight;
-  shadows: CascadedShadowGenerator | null;
+  env: EnvironmentRig;
   pipeline: DefaultRenderingPipeline;
-  addShadowCaster(mesh: Mesh): void;
-  setShadowsEnabled(on: boolean): void;
+  readonly shadows: CascadedShadowGenerator | null;
+  addShadowCaster(mesh: Mesh, kind?: CasterKind): void;
+  applyProfile(p: GraphicsProfile): void;
+  setWet(on: boolean): void;
   readonly shadowsEnabled: boolean;
+  readonly ssaoActive: boolean;
+  readonly ssrActive: boolean;
 }
 
 /** Dirección de la luz solar (mañana avanzada, desde el sureste; el norte es +Z). */
-const SUN_DIRECTION = new Vector3(-0.5, -0.64, 0.58).normalize();
+export const SUN_DIRECTION = new Vector3(-0.5, -0.64, 0.58).normalize();
+
+const TONEMAP = ImageProcessingConfiguration.TONEMAPPING_ACES;
 
 export function setupLighting(scene: Scene, camera: Camera): LightingRig {
   scene.clearColor = new Color4(0.62, 0.74, 0.9, 1);
   scene.fogMode = Scene.FOGMODE_EXP2;
-  scene.fogDensity = 0.0017;
-  scene.fogColor = new Color3(0.74, 0.8, 0.88);
+  scene.fogDensity = 0.0015;
+  scene.fogColor = new Color3(0.72, 0.79, 0.88);
 
   const sun = new DirectionalLight("sun", SUN_DIRECTION, scene);
-  sun.intensity = 3.4;
-  sun.diffuse = new Color3(1, 0.95, 0.85);
+  sun.intensity = 3.3;
+  sun.diffuse = new Color3(1, 0.95, 0.86);
   sun.specular = new Color3(1, 0.96, 0.9);
   sun.position = SUN_DIRECTION.scale(-300);
   sun.shadowMinZ = 1;
   sun.shadowMaxZ = 330;
 
+  // Relleno suave: la luz ambiental principal viene del IBL; esto evita negros absolutos en zonas de sombra.
   const fill = new HemisphericLight("fill", new Vector3(0, 1, 0), scene);
-  fill.intensity = 0.25;
-  fill.diffuse = new Color3(0.7, 0.8, 1);
-  fill.groundColor = new Color3(0.45, 0.4, 0.35);
+  fill.intensity = 0.3;
+  fill.diffuse = new Color3(0.75, 0.82, 1);
+  fill.groundColor = new Color3(0.5, 0.44, 0.38);
 
-  // Cielo procedural.
-  const sky = MeshBuilder.CreateSphere("sky", { diameter: 1400, segments: 24, sideOrientation: Mesh.BACKSIDE }, scene);
-  const skyMat = createSkyMaterial(scene, SUN_DIRECTION.scale(-1).normalize());
-  sky.material = skyMat;
-  sky.infiniteDistance = true;
-  sky.isPickable = false;
-  sky.applyFog = false;
+  const env = createEnvironment(scene, SUN_DIRECTION.scale(-1).normalize(), 1.05);
 
-  // Entorno PBR: se renderiza el cielo una sola vez en una sonda cúbica.
-  const probe = new ReflectionProbe("skyProbe", 256, scene);
-  probe.renderList!.push(sky);
-  probe.position = new Vector3(0, 10, 0);
-  probe.refreshRate = RenderTargetTexture.REFRESHRATE_RENDER_ONCE;
-  scene.environmentTexture = probe.cubeTexture;
-  scene.environmentIntensity = 0.85;
-
-  // Sombras en cascada.
-  let shadows: CascadedShadowGenerator | null = new CascadedShadowGenerator(2048, sun);
-  configureShadows(shadows);
-
-  // Post-proceso.
+  // Post-proceso HDR: un único pipeline (MSAA o FXAA, nunca ambos).
   const pipeline = new DefaultRenderingPipeline("pipeline", true, scene, [camera]);
-  pipeline.samples = 4;
-  pipeline.fxaaEnabled = true;
-  pipeline.bloomEnabled = true;
-  pipeline.bloomThreshold = 0.9;
-  pipeline.bloomWeight = 0.16;
-  pipeline.bloomKernel = 48;
   pipeline.imageProcessingEnabled = true;
-  pipeline.imageProcessing.toneMappingEnabled = true;
-  pipeline.imageProcessing.toneMappingType = ImageProcessingConfiguration.TONEMAPPING_ACES;
-  pipeline.imageProcessing.exposure = 1.3;
-  pipeline.imageProcessing.contrast = 1.12;
-  pipeline.sharpenEnabled = true;
-  pipeline.sharpen.edgeAmount = 0.25;
+  const ip = pipeline.imageProcessing;
+  ip.toneMappingEnabled = true;
+  ip.toneMappingType = TONEMAP;
+  ip.exposure = 1.2;
+  ip.contrast = 1.1;
+  // Corrección de color sutil: algo más de saturación, sombras frías y luces cálidas.
+  ip.colorCurvesEnabled = true;
+  const cc = ip.colorCurves!;
+  cc.globalSaturation = 22;
+  cc.shadowsHue = 215;
+  cc.shadowsDensity = 3;
+  cc.highlightsHue = 42;
+  cc.highlightsDensity = 10;
+  ip.vignetteEnabled = false;
+  ip.vignetteWeight = 1.2;
+  ip.vignetteStretch = 0;
+  ip.vignetteColor = new Color4(0, 0, 0, 0);
+  pipeline.bloomThreshold = 0.95;
+  pipeline.bloomWeight = 0.12;
+  pipeline.bloomKernel = 48;
+  pipeline.bloomScale = 0.5;
+  pipeline.sharpen.edgeAmount = 0.2;
 
-  const casters: Mesh[] = [];
-  let on = true;
+  let shadows: CascadedShadowGenerator | null = null;
+  let shadowSig = "";
+  let ssao: SSAO2RenderingPipeline | null = null;
+  let ssaoMode: "off" | "half" | "full" = "off";
+  let ssr: SSRRenderingPipeline | null = null;
+  let wet = false;
+  let profile: GraphicsProfile | null = null;
+  const casters: { mesh: Mesh; kind: CasterKind }[] = [];
+
+  const allowed = (kind: CasterKind, p: GraphicsProfile): boolean => {
+    if (kind === "detail") return p.shadows.detailCasters;
+    if (kind === "proxy") return p.shadows.basilica;
+    return true;
+  };
+
+  const syncCasters = (): void => {
+    if (!shadows || !profile) return;
+    const rl = shadows.getShadowMap()!.renderList!;
+    rl.length = 0;
+    for (const c of casters) if (allowed(c.kind, profile)) rl.push(c.mesh);
+  };
+
+  const syncSsr = (): void => {
+    const want = wet && !!profile?.ssr;
+    if (want && !ssr) {
+      try {
+        ssr = new SSRRenderingPipeline("ssr", scene, [camera], false);
+        ssr.strength = 0.9;
+        ssr.reflectivityThreshold = 0.05;
+        ssr.thickness = 0.6;
+        ssr.maxDistance = 90;
+        ssr.maxSteps = 80;
+        ssr.step = 1;
+        ssr.blurDispersionStrength = 0.03;
+        ssr.roughnessFactor = 0.2;
+        ssr.enableAutomaticThicknessComputation = false;
+        ssr.selfCollisionNumSkip = 2;
+      } catch (e) {
+        console.warn("[SSR] No disponible en este navegador/configuración:", e);
+        ssr = null;
+      }
+    } else if (!want && ssr) {
+      ssr.dispose();
+      ssr = null;
+    }
+  };
+
   const rig: LightingRig = {
     sun,
+    env,
+    pipeline,
     get shadows() {
       return shadows;
     },
-    pipeline,
-    addShadowCaster(mesh: Mesh) {
-      casters.push(mesh);
-      shadows?.addShadowCaster(mesh);
+    get shadowsEnabled() {
+      return !!shadows;
     },
-    setShadowsEnabled(enable: boolean) {
-      if (enable === on) return;
-      on = enable;
-      if (enable) {
-        shadows = new CascadedShadowGenerator(2048, sun);
-        configureShadows(shadows);
-        casters.forEach((m) => shadows!.addShadowCaster(m));
-      } else {
+    get ssaoActive() {
+      return !!ssao;
+    },
+    get ssrActive() {
+      return !!ssr;
+    },
+    addShadowCaster(mesh, kind = "prop") {
+      casters.push({ mesh, kind });
+      if (shadows && profile && allowed(kind, profile)) shadows.getShadowMap()!.renderList!.push(mesh);
+    },
+    setWet(on) {
+      wet = on;
+      syncSsr();
+    },
+    applyProfile(p) {
+      profile = p;
+      camera.maxZ = p.drawDistance;
+      // la esfera del cielo (radio 700) debe quedar dentro del plano lejano de la cámara
+      env.sky.scaling.setAll((p.drawDistance * 0.92) / 700);
+
+      // --- Sombras (se recrea el generador solo si cambia el tamaño/número de cascadas)
+      const sig = `${p.shadows.enabled}|${p.shadows.mapSize}|${p.shadows.cascades}`;
+      if (sig !== shadowSig) {
         shadows?.dispose();
         shadows = null;
+        shadowSig = sig;
+        if (p.shadows.enabled) {
+          shadows = new CascadedShadowGenerator(p.shadows.mapSize, sun);
+          shadows.numCascades = p.shadows.cascades;
+          shadows.stabilizeCascades = true;
+          shadows.lambda = 0.9;
+          shadows.autoCalcDepthBounds = true;
+          shadows.depthClamp = true;
+          shadows.bias = 0.0025;
+          shadows.normalBias = 0.02;
+          shadows.usePercentageCloserFiltering = true;
+          shadows.darkness = 0;
+        }
       }
-    },
-    get shadowsEnabled() {
-      return on;
+      if (shadows) {
+        shadows.shadowMaxZ = Math.min(p.shadows.maxZ, p.drawDistance);
+        shadows.filteringQuality =
+          p.shadows.quality === "high"
+            ? CascadedShadowGenerator.QUALITY_HIGH
+            : p.shadows.quality === "medium"
+              ? CascadedShadowGenerator.QUALITY_MEDIUM
+              : CascadedShadowGenerator.QUALITY_LOW;
+      }
+      syncCasters();
+
+      // --- Postproceso: MSAA o FXAA, nunca los dos
+      pipeline.samples = p.msaa === 0 ? 1 : p.msaa;
+      pipeline.fxaaEnabled = p.msaa === 0 && p.fxaa;
+      pipeline.bloomEnabled = p.bloom;
+      pipeline.sharpenEnabled = p.sharpen;
+      pipeline.imageProcessing.vignetteEnabled = p.vignette;
+
+      // --- Oclusión ambiental (SSAO2) solo en MEDIO/ALTO
+      if (p.ssao !== ssaoMode) {
+        ssao?.dispose();
+        ssao = null;
+        ssaoMode = p.ssao;
+        if (p.ssao !== "off") {
+          try {
+            ssao = new SSAO2RenderingPipeline("ssao", scene, { ssaoRatio: p.ssao === "full" ? 0.75 : 0.5, blurRatio: 1 }, [camera], false);
+            ssao.radius = 1.6;
+            ssao.totalStrength = 0.9;
+            ssao.base = 0.05;
+            ssao.maxZ = 70;
+            ssao.minZAspect = 0.4;
+            ssao.samples = p.ssao === "full" ? 24 : 12;
+            ssao.expensiveBlur = p.ssao === "full";
+          } catch (e) {
+            console.warn("[SSAO] No disponible:", e);
+            ssao = null;
+          }
+        }
+      }
+      syncSsr();
     },
   };
   return rig;
-}
-
-function configureShadows(g: CascadedShadowGenerator): void {
-  g.numCascades = 3;
-  g.stabilizeCascades = true;
-  g.lambda = 0.85;
-  g.shadowMaxZ = 220;
-  g.autoCalcDepthBounds = true;
-  g.bias = 0.0035;
-  g.normalBias = 0.025;
-  g.usePercentageCloserFiltering = true;
-  g.filteringQuality = CascadedShadowGenerator.QUALITY_MEDIUM;
-  g.darkness = 0.0;
-  g.depthClamp = true;
-}
-
-/** Cielo degradado mediterráneo con halo solar (valores lineales, antes del tone mapping). */
-function createSkyMaterial(scene: Scene, toSun: Vector3): ShaderMaterial {
-  Effect.ShadersStore["bfpsSkyVertexShader"] = `
-    precision highp float;
-    attribute vec3 position;
-    uniform mat4 worldViewProjection;
-    varying vec3 vDir;
-    void main() {
-      vDir = position;
-      gl_Position = worldViewProjection * vec4(position, 1.0);
-    }`;
-  Effect.ShadersStore["bfpsSkyFragmentShader"] = `
-    precision highp float;
-    varying vec3 vDir;
-    uniform vec3 sunDir;
-    void main() {
-      vec3 d = normalize(vDir);
-      float h = clamp(d.y, 0.0, 1.0);
-      vec3 horizon = vec3(0.62, 0.74, 0.90);
-      vec3 zenith = vec3(0.10, 0.30, 0.78);
-      vec3 col = mix(horizon, zenith, pow(h, 0.5));
-      float s = max(dot(d, sunDir), 0.0);
-      col += vec3(1.0, 0.82, 0.55) * (pow(s, 900.0) * 14.0 + pow(s, 24.0) * 0.35);
-      col = mix(col, horizon * 0.75, smoothstep(0.0, -0.12, d.y));
-      gl_FragColor = vec4(col, 1.0);
-    }`;
-  const mat = new ShaderMaterial("skyMat", scene, { vertex: "bfpsSky", fragment: "bfpsSky" }, {
-    attributes: ["position"],
-    uniforms: ["worldViewProjection", "sunDir"],
-  });
-  mat.setVector3("sunDir", toSun);
-  mat.backFaceCulling = false;
-  mat.disableDepthWrite = true;
-  return mat;
 }

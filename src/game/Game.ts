@@ -1,5 +1,6 @@
 import { Engine, FreeCamera, Scene, SceneInstrumentation, Vector3 } from "@babylonjs/core";
 import { PLAYER } from "./config";
+import { GraphicsSettings, PROFILES, type ProfileName } from "./graphics/GraphicsSettings";
 import { InputManager } from "./player/InputManager";
 import { PlayerController } from "./player/PlayerController";
 import { MenuScreen } from "./ui/MenuScreen";
@@ -22,11 +23,11 @@ export class Game {
   private fpsTimer = 0;
   private slowTime = 0;
   private readonly instrumentation: SceneInstrumentation;
+  readonly settings = new GraphicsSettings();
 
   constructor(canvas: HTMLCanvasElement) {
-    this.engine = new Engine(canvas, true, { preserveDrawingBuffer: false, stencil: false, powerPreference: "high-performance" }, true);
-    // En pantallas retina limitamos la resolución interna para mantener los FPS.
-    this.engine.setHardwareScalingLevel(1 / Math.min(window.devicePixelRatio || 1, 1.5));
+    // Sin antialiasing del canvas: el pipeline HDR ya aplica MSAA/FXAA según el perfil.
+    this.engine = new Engine(canvas, false, { preserveDrawingBuffer: false, stencil: false, powerPreference: "high-performance" }, true);
     this.scene = new Scene(this.engine);
     this.input = new InputManager(canvas);
     this.instrumentation = new SceneInstrumentation(this.scene);
@@ -40,9 +41,19 @@ export class Game {
     this.player = new PlayerController(this.scene, camera, this.input);
 
     this.map = new BarcelonaMap(this.scene, this.lighting);
-    const steps = 6;
+    const steps = 8;
     let n = 0;
+    this.menu.setProgress("Preparando entorno e iluminación…", 0.02);
+    const envInfo = await this.lighting.env.ready;
+    console.info(`[Entorno] IBL: ${envInfo.source}`);
     await this.map.build((label) => this.menu.setProgress(label, ++n / (steps + 1)));
+
+    // Perfil gráfico y asfalto mojado (aplican opciones reales de renderizado)
+    this.applyGraphics();
+    this.menu.bindGraphics(this.settings.profile, this.settings.wet, (profile, wet) => {
+      this.settings.set(profile as ProfileName, wet);
+      this.applyGraphics();
+    });
 
     const s = this.map.spawnPosition(0);
     this.player.teleport(s.position.x, s.position.y, s.position.z, s.yaw);
@@ -89,18 +100,32 @@ export class Game {
     }
   }
 
-  /** Si el rendimiento es bajo de forma sostenida, desactiva sombras y después reduce la resolución. */
+  /** Aplica el perfil actual: resolución interna, sombras, postproceso, SSAO, filtrado, distancia y asfalto mojado. */
+  applyGraphics(): void {
+    const p = this.settings.current;
+    const dpr = Math.min(window.devicePixelRatio || 1, p.maxPixelRatio);
+    this.engine.setHardwareScalingLevel(1 / (dpr * p.renderScale));
+    this.lighting.applyProfile(p);
+    this.map.setWet(this.settings.wet);
+    this.lighting.setWet(this.settings.wet);
+    // filtrado anisotrópico en todas las texturas de la escena
+    for (const t of this.scene.textures) t.anisotropicFilteringLevel = Math.min(p.anisotropy, this.engine.getCaps().maxAnisotropy || 4);
+    this.menu.setQualityValue(this.settings.profile);
+    console.info(`[Gráficos] perfil ${p.label} · render ${this.engine.getRenderWidth()}×${this.engine.getRenderHeight()} · asfalto mojado: ${this.settings.wet ? "sí" : "no"}`);
+  }
+
+  /** Si el rendimiento es bajo de forma sostenida baja un escalón de perfil (sin guardarlo como preferencia). */
   private autoQuality(fps: number, dt: number): void {
     if (!this.input.locked) return;
     this.slowTime = fps < 30 ? this.slowTime + dt : 0;
     if (this.slowTime > 4) {
       this.slowTime = 0;
-      if (this.lighting.shadowsEnabled) {
-        this.lighting.setShadowsEnabled(false);
-        console.warn("[Calidad] FPS bajos: sombras desactivadas.");
-      } else if (this.engine.getHardwareScalingLevel() < 2) {
-        this.engine.setHardwareScalingLevel(this.engine.getHardwareScalingLevel() + 0.25);
-        console.warn("[Calidad] FPS bajos: reduciendo resolución interna.");
+      const next: Record<ProfileName, ProfileName | null> = { high: "medium", medium: "low", low: null };
+      const to = next[this.settings.profile];
+      if (to) {
+        this.settings.set(to, this.settings.wet, false);
+        this.applyGraphics();
+        console.warn(`[Calidad] FPS bajos sostenidos: perfil ${PROFILES[to].label}.`);
       }
     }
   }
@@ -113,6 +138,7 @@ export class Game {
       input: this.input,
       map: this.map,
       lighting: this.lighting,
+      game: this,
       stats: () => ({ ...this.map.stats, fps: this.engine.getFps(), drawCalls: this.instrumentation.drawCallsCounter.current, frameMs: this.instrumentation.frameTimeCounter.average }),
       tp: (x: number, z: number, yawDeg = 0, y = 0.05) => this.player.teleport(x, y, z, (yawDeg * Math.PI) / 180),
       selfTest: () => runCollisionSelfTest(this.scene, this.player, this.map),

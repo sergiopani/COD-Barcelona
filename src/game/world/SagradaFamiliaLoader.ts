@@ -1,4 +1,4 @@
-import { AbstractMesh, ImportMeshAsync, Mesh, Scene, TransformNode, Vector3 } from "@babylonjs/core";
+import { AbstractMesh, Color3, ImportMeshAsync, Mesh, PBRMaterial, Scene, TransformNode, Vector3 } from "@babylonjs/core";
 import "@babylonjs/loaders/glTF";
 import { ASSETS } from "../config";
 import type { CollisionManager } from "./CollisionManager";
@@ -23,6 +23,8 @@ export interface SagradaConfig {
   /** Apoya la parte más baja del modelo en y = position[1]. */
   alignToGround: boolean;
   castShadows: boolean;
+  /** Multiplicador de color base (tinte cálido sobre la textura original). null = sin cambios. */
+  tint: [number, number, number] | null;
   /** Colliders simples en planta: centro, tamaño y altura (el modelo NUNCA se usa como colisión). */
   colliders: { cx: number; cz: number; sx: number; sz: number; h: number; rotYDeg?: number }[];
 }
@@ -35,6 +37,7 @@ const DEFAULT_CONFIG: SagradaConfig = {
   centerXZ: true,
   alignToGround: true,
   castShadows: false,
+  tint: null,
   colliders: [],
 };
 
@@ -88,8 +91,19 @@ export async function loadSagradaFamilia(scene: Scene, mats: MaterialSet, collis
       let tris = 0;
       let verts = 0;
       for (const m of result.meshes) {
+        const mat = m.material;
+        if (mat instanceof PBRMaterial) {
+          if (config.tint) mat.albedoColor = new Color3(config.tint[0], config.tint[1], config.tint[2]);
+          mat.environmentIntensity = 1.1;
+          for (const t of [mat.albedoTexture, mat.bumpTexture, mat.metallicTexture]) if (t) t.anisotropicFilteringLevel = 16;
+          console.info(
+            `[SagradaFamilia] Material "${mat.name}": metallic=${mat.metallic} roughness=${mat.roughness} ` +
+              `albedoTex=${!!mat.albedoTexture} normalTex=${!!mat.bumpTexture} ormTex=${!!mat.metallicTexture}`,
+          );
+        }
         m.isPickable = false;
-        m.receiveShadows = true;
+        // No recibe sombras: el proxy de sombra (columnas) coincide con su superficie y la oscurecería por completo.
+        m.receiveShadows = false;
         m.checkCollisions = false; // la geometría del modelo nunca se usa como colisión
         m.freezeWorldMatrix();
         m.material?.freeze();

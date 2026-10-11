@@ -1,4 +1,4 @@
-import { FreeCamera, Mesh, MeshBuilder, Scene, Vector3 } from "@babylonjs/core";
+import { Camera, FreeCamera, Mesh, MeshBuilder, Scene, Vector3 } from "@babylonjs/core";
 import { PLAYER } from "../config";
 import type { InputManager } from "./InputManager";
 
@@ -24,13 +24,15 @@ export class PlayerController {
   speed = 0;
   private bobTime = 0;
   private readonly tmp = new Vector3();
-  private readonly baseFov = 1.1;
+  /** FOV horizontal de 90° (se mantiene en cualquier relación de aspecto). */
+  private readonly baseFov = Math.PI / 2;
 
   constructor(scene: Scene, camera: FreeCamera, private readonly input: InputManager | null) {
     this.camera = camera;
     camera.inputs.clear();
     camera.minZ = 0.1;
     camera.maxZ = 800;
+    camera.fovMode = Camera.FOVMODE_HORIZONTAL_FIXED;
     camera.fov = this.baseFov;
     camera.rotationQuaternion = null;
 
@@ -169,7 +171,7 @@ export class PlayerController {
     const bob = this.grounded ? Math.sin(this.bobTime) * 0.025 * Math.min(1, this.speed / 4) : 0;
     this.camera.position.set(this.body.position.x, this.body.position.y + PLAYER.eyeHeight + bob, this.body.position.z);
     this.camera.rotation.set(this.pitch, this.yaw, 0);
-    const targetFov = this.baseFov + sprinting * 0.07;
+    const targetFov = this.baseFov + sprinting * 0.06;
     this.camera.fov += (targetFov - this.camera.fov) * Math.min(1, dt * 8);
   }
 }

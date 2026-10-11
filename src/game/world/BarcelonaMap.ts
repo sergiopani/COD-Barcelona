@@ -5,10 +5,12 @@ import { CollisionManager } from "./CollisionManager";
 import type { LightingRig } from "./Lighting";
 import { createMaterials, type MatKey, type MaterialSet } from "./Materials";
 import { BatchSet, F, Frame, type RGBA } from "./MeshBatch";
+import { buildHeightfieldShadowProxy } from "./SagradaShadowProxy";
+import { createWetMaterials, type WetSet } from "./WetSurfaces";
 import { buildPalms, type PalmSet } from "./PalmTrees";
 import { loadSagradaFamilia, type SagradaResult } from "./SagradaFamiliaLoader";
 import { buildProps } from "./StreetFurniture";
-import { buildStreets } from "./StreetGenerator";
+import { buildStreets, type StreetBuild } from "./StreetGenerator";
 import { buildingChains, centerChain, crosswalkRect, crosswalks, props, spawns, type Spawn } from "./mapLayout";
 
 export interface MapStats {
@@ -32,6 +34,8 @@ export class BarcelonaMap {
   materials!: MaterialSet;
   sagrada!: SagradaResult;
   private palms: PalmSet | null = null;
+  private streets!: StreetBuild;
+  private wetSet: WetSet | null = null;
   stats!: MapStats;
   readonly warnings: string[] = [];
   private readonly meshes: Mesh[] = [];
@@ -53,6 +57,7 @@ export class BarcelonaMap {
 
     await tick("Construyendo calles y aceras…");
     const streets = buildStreets(this.scene, mats, this.collisions);
+    this.streets = streets;
     this.meshes.push(...streets.meshes);
 
     await tick("Levantando edificios del Eixample…");
@@ -78,7 +83,7 @@ export class BarcelonaMap {
       props.filter((p) => p.kind === "tree").map((p) => ({ x: p.x, y: STREET.curbHeight, z: p.z })),
     );
     if (this.palms) {
-      for (const m of this.palms.meshes) this.lighting.addShadowCaster(m);
+      for (const m of this.palms.meshes) this.lighting.addShadowCaster(m, "prop");
       this.meshes.push(...this.palms.meshes);
     }
     const pset = new BatchSet(mats.tile);
@@ -88,8 +93,15 @@ export class BarcelonaMap {
 
     await tick("Cargando la Sagrada Família…");
     this.sagrada = await loadSagradaFamilia(this.scene, mats, this.collisions);
-    for (const m of this.sagrada.meshes) {
-      if (m instanceof Mesh && this.sagrada.castShadows && m.getTotalVertices() > 0) this.lighting.addShadowCaster(m);
+    if (this.sagrada.usedPlaceholder) {
+      for (const m of this.sagrada.meshes) if (m instanceof Mesh && m.getTotalVertices() > 0) this.lighting.addShadowCaster(m, "prop");
+    } else {
+      // El modelo real (930 k triángulos) no proyecta sombra directamente: se usa un proxy de columnas.
+      const proxy = buildHeightfieldShadowProxy(this.scene, this.sagrada.meshes);
+      if (proxy) {
+        this.meshes.push(proxy);
+        this.lighting.addShadowCaster(proxy, "proxy");
+      }
     }
 
     this.collisions.addWorldBounds(ARM_END + 8);
@@ -114,7 +126,13 @@ export class BarcelonaMap {
       mesh.freezeWorldMatrix();
       this.meshes.push(mesh);
       // las rejas (alpha test) y el cristal no proyectan sombra útil
-      if (castShadows && key !== "railing" && key !== "glass" && key !== "marking") this.lighting.addShadowCaster(mesh);
+      // Sombras: masas de pared siempre; piedra (balcones, cornisas) solo en ALTO; el resto de detalle no proyecta.
+      if (!castShadows) continue;
+      if (key === "wall") this.lighting.addShadowCaster(mesh, "mass");
+      else if (key === "stone") this.lighting.addShadowCaster(mesh, "detail");
+      else if (key !== "railing" && key !== "glass" && key !== "marking" && key !== "stucco" && key !== "plain" && key !== "shutter" && key !== "roller" && key !== "awning") {
+        this.lighting.addShadowCaster(mesh, "prop");
+      }
     }
   }
 
@@ -153,6 +171,15 @@ export class BarcelonaMap {
       }
     }
     for (const w of this.warnings) console.warn("[Mapa] " + w);
+  }
+
+  /** Asfalto/aceras mojados (opcional). Los materiales mojados se crean la primera vez que se activan. */
+  setWet(on: boolean): void {
+    if (on && !this.wetSet) this.wetSet = createWetMaterials(this.scene, this.materials);
+    const w = this.wetSet;
+    this.streets.asphalt.material = on && w ? w.asphalt : this.materials.asphalt;
+    for (const m of this.streets.sidewalkTops) m.material = on && w ? w.panot : this.materials.panot;
+    for (const m of this.streets.curbs) m.material = on && w ? w.curb : this.materials.curbStone;
   }
 
   spawnPosition(i: number): { position: Vector3; yaw: number } {

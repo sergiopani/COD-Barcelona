@@ -2,6 +2,7 @@ import { Mesh, MeshBuilder, Scene, VertexBuffer } from "@babylonjs/core";
 import { ARM_END, STREET } from "../config";
 import { offsetPolyline } from "../util/geom";
 import { BatchSet, MeshBatch, type P3 } from "./MeshBatch";
+import { addWorldUv2 } from "./WetSurfaces";
 import type { CollisionManager } from "./CollisionManager";
 import type { MaterialSet } from "./Materials";
 import { CROSSWALK_ALONG, centerChain, crosswalks, sidewalkChains, streetRuns, type Chain } from "./mapLayout";
@@ -13,6 +14,9 @@ const WHITE: [number, number, number, number] = [1, 1, 1, 1];
 
 export interface StreetBuild {
   meshes: Mesh[];
+  asphalt: Mesh;
+  sidewalkTops: Mesh[];
+  curbs: Mesh[];
   /** Mallas que reciben sombras. */
   receivers: Mesh[];
 }
@@ -30,6 +34,7 @@ export function buildStreets(scene: Scene, mats: MaterialSet, collisions: Collis
   const uv = asphalt.getVerticesData(VertexBuffer.UVKind)!;
   for (let i = 0; i < uv.length; i++) uv[i] *= size / 6;
   asphalt.setVerticesData(VertexBuffer.UVKind, uv);
+  addWorldUv2(asphalt);
   asphalt.material = mats.asphalt;
   asphalt.receiveShadows = true;
   collisions.addMesh(asphalt, "ground");
@@ -70,7 +75,13 @@ export function buildStreets(scene: Scene, mats: MaterialSet, collisions: Collis
     meshes.push(mesh);
   }
 
-  return { meshes, receivers: meshes };
+  return {
+    meshes,
+    asphalt,
+    sidewalkTops: meshes.filter((m) => m.name.startsWith("sidewalk_")),
+    curbs: meshes.filter((m) => m.name.startsWith("curb_")),
+    receivers: meshes,
+  };
 }
 
 function buildSidewalk(scene: Scene, mats: MaterialSet, chain: Chain, tile: number): Mesh[] {

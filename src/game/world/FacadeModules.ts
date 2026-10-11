@@ -250,3 +250,29 @@ export function shopfront(c: FacadeCtx, u: number, bw: number, h: number): void 
     );
   }
 }
+
+/** Aparato de aire acondicionado colgado de la fachada (muy típico en Barcelona). */
+export function acUnit(c: FacadeCtx, u: number, v: number): void {
+  const plain = c.set.get(c.chunk, "plain");
+  const k = 0.85 + c.rng.next() * 0.15;
+  plain.addBox(c.f, u, v, 0.2, 0.8, 0.55, 0.36, [k, k, k * 0.97, 1], F.BACK);
+  plain.addBox(c.f, u, v, 0.385, 0.62, 0.38, 0.02, [0.25, 0.25, 0.27, 1], F.BACK); // rejilla
+  // soporte
+  c.set.get(c.chunk, "iron").addBox(c.f, u, v - 0.34, 0.2, 0.7, 0.05, 0.3, [1, 1, 1, 1], F.BACK);
+}
+
+/** Macetas y plantas asomando por encima de la barandilla de un balcón. */
+export function balconyPlants(c: FacadeCtx, u: number, v: number, width: number, depth: number): void {
+  const { set, chunk, f, rng } = c;
+  const leaf = set.get(chunk, "foliage");
+  const plain = set.get(chunk, "plain");
+  const n = rng.int(2, 3);
+  for (let i = 0; i < n; i++) {
+    const uc = u - width / 2 + (width * (i + 0.5)) / n;
+    const w = depth - 0.22;
+    plain.addBox(f, uc, v + 0.17, w, 0.3, 0.34, 0.3, [0.62, 0.32, 0.2, 1], F.DOWN); // maceta de barro
+    const p = f.pt(uc, v + 0.62, w);
+    const g = 0.75 + rng.next() * 0.5;
+    leaf.addEllipsoid(p[0], p[1], p[2], 0.3, 0.28, 0.3, 7, 4, [g, g * 1.05, g * 0.85, 1]);
+  }
+}

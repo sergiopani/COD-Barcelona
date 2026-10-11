@@ -21,6 +21,16 @@
         <button id="play" disabled>Cargando…</button>
         <p id="status" class="status">Iniciando motor…</p>
         <div class="bar"><div id="bar-fill"></div></div>
+        <div class="settings">
+          <label>Calidad gráfica
+            <select id="quality">
+              <option value="low">Bajo</option>
+              <option value="medium">Medio</option>
+              <option value="high">Alto</option>
+            </select>
+          </label>
+          <label class="check"><input type="checkbox" id="wet" /> Asfalto mojado</label>
+        </div>
         <table class="controls">
           <tr><td><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></td><td>Moverse</td></tr>
           <tr><td><kbd>Ratón</kbd></td><td>Mirar</td></tr>

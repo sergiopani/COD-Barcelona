@@ -28,6 +28,11 @@ function insideSolid(scene: Scene, p: Vector3, margin = 0): string | null {
   return null;
 }
 
+/** ¿Se solapa el cuerpo completo (pies, torso y cabeza) con algún sólido, con margen horizontal? */
+function bodyOverlaps(scene: Scene, feet: Vector3, margin: number): boolean {
+  return [0.05, 0.6, 1.2, 1.75].some((h) => insideSolid(scene, feet.add(new Vector3(0, h, 0)), margin) !== null);
+}
+
 /**
  * Pruebas automáticas de movimiento/colisión ejecutadas dentro del navegador (window.__game.selfTest()).
  * Simulan al jugador a 60 Hz sin necesidad de teclado ni Pointer Lock.
@@ -62,7 +67,7 @@ export function runCollisionSelfTest(scene: Scene, player: PlayerController, map
   let skipped = 0;
   for (const [ox, oz] of origins) {
     player.teleport(ox, 0.5, oz, 0);
-    if (insideSolid(scene, player.position.add(new Vector3(0, 0.9, 0)), 0.5)) {
+    if (bodyOverlaps(scene, player.position, 0.5)) {
       skipped++; // origen dentro de un coche/mobiliario: no es un punto de partida válido
       continue;
     }
@@ -150,7 +155,7 @@ export function runCollisionSelfTest(scene: Scene, player: PlayerController, map
     const z = axis === "x" ? street + off : t;
     if (Math.abs(x) < 57 && Math.abs(z) < 57) continue;
     player.teleport(x, 0.5, z, rnd() * Math.PI * 2);
-    if (insideSolid(scene, player.position.add(new Vector3(0, 0.9, 0)), 0.5)) continue; // empezaría solapado con un sólido
+    if (bodyOverlaps(scene, player.position, 0.5)) continue; // empezaría solapado con un sólido
     fuzzRuns++;
     let bad: string | null = null;
     let fwd = 1;

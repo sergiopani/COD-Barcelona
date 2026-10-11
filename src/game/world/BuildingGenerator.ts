@@ -32,7 +32,7 @@ const PALETTE: RGBA[] = [
   [0.86, 0.58, 0.45, 1], // terracota claro
   [0.82, 0.85, 0.76, 1], // verde grisáceo
   [0.9, 0.8, 0.64, 1], // arena
-  [0.74, 0.8, 0.84, 1], // azul grisáceo
+  [0.84, 0.82, 0.76, 1], // gris cálido
   [0.96, 0.88, 0.58, 1], // amarillo desvaído
   [0.94, 0.93, 0.89, 1], // blanco roto
   [0.78, 0.68, 0.58, 1], // piedra parda
@@ -106,8 +106,18 @@ export function buildBuilding(set: BatchSet, chunk: string, spec: BuildingSpec):
   const trim: RGBA = [Math.min(1.1, spec.wall[0] * 1.08), Math.min(1.1, spec.wall[1] * 1.08), Math.min(1.1, spec.wall[2] * 1.08), 1];
   const ctx: M.FacadeCtx = { set, chunk, f, rng, wall: spec.wall, trim, shutterTint: rng.pick(SHUTTER_TINTS) };
 
-  // Masa del edificio (fachada + volumen hacia el interior de la manzana).
-  set.get(chunk, "stucco").addBox(f, W / 2, H / 2, -spec.depth / 2, W, H, spec.depth, spec.wall, F.DOWN);
+  // Masa del edificio (fachada + volumen hacia el interior de la manzana), en un lote "wall" aparte
+  // (es el único que proyecta sombra en perfiles BAJO/MEDIO). Tres franjas tonales dan suciedad en la base
+  // y bajo la cornisa; el desplazamiento de UV aleatorio evita que todos los edificios repitan el mismo estuco.
+  const wallBatch = set.get(chunk, "wall");
+  wallBatch.uvOffset = [rng.next(), rng.next()];
+  const tone = (k: number): RGBA => [spec.wall[0] * k, spec.wall[1] * k, spec.wall[2] * k, 1];
+  const baseH = 1.3;
+  const topH = 1.6;
+  wallBatch.addBox(f, W / 2, baseH / 2, -spec.depth / 2, W, baseH, spec.depth, tone(0.78), F.DOWN | F.UP);
+  wallBatch.addBox(f, W / 2, baseH + (H - baseH - topH) / 2, -spec.depth / 2, W, H - baseH - topH, spec.depth, spec.wall, F.DOWN | F.UP);
+  wallBatch.addBox(f, W / 2, H - topH / 2, -spec.depth / 2, W, topH, spec.depth, tone(0.92), F.DOWN);
+  wallBatch.uvOffset = [0, 0];
 
   M.pilaster(ctx, 0.15, H - 0.5);
   M.pilaster(ctx, W - 0.15, H - 0.5);
@@ -166,8 +176,12 @@ export function buildBuilding(set: BatchSet, chunk: string, spec: BuildingSpec):
       const ww = Math.min(1.05, bw - 1.2);
       if (spec.style === "arched" && fl === spec.stdFloors - 1) M.windowArched(ctx, uc, v + 0.35, ww, 2.5);
       else M.windowRect(ctx, uc, v + 0.35, ww, 2.4, { lintel: fl % 2 === 0 });
-      M.balcony(ctx, uc, v + 0.35, Math.min(bw - 0.5, 2.1), 0.65);
+      const bwid = Math.min(bw - 0.5, 2.1);
+      M.balcony(ctx, uc, v + 0.35, bwid, 0.65);
       M.shutters(ctx, uc, v + 0.35, ww, 2.4);
+      if (rng.chance(0.22)) M.balconyPlants(ctx, uc, v + 0.35, bwid, 0.65);
+      // aire acondicionado en la pared entre ventanas (no en las dos primeras plantas)
+      if (fl > 0 && i < nb - 1 && rng.chance(0.13)) M.acUnit(ctx, uc + bw / 2, v + 1.3);
     }
   }
   if (miradorOn) {
