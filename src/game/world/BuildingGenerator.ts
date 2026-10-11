@@ -1,7 +1,7 @@
 import { Rng } from "../util/rng";
 import { type BatchSet, F, Frame, type RGBA } from "./MeshBatch";
 import * as M from "./FacadeModules";
-import { BATLLO_VARIANTS, BATLLO_WALL_TOP_V, addBatlloFacade, batlloKey, hasBatllo } from "./BatlloFacade";
+import { BATLLO_WALL_TOP_V, addBatlloFacade, batlloKey, hasBatllo } from "./BatlloFacade";
 import type { Chain, Seg } from "./mapLayout";
 
 /**
@@ -24,6 +24,8 @@ export interface BuildingSpec {
   /** Profundidad de la masa del edificio hacia el interior de la manzana. */
   depth: number;
   seed: number;
+  /** Si está definido, la fachada superior es la de la Casa Batlló (paleta `variant`). Solo unas pocas casas. */
+  batllo?: { variant: number };
 }
 
 const PALETTE: RGBA[] = [
@@ -110,12 +112,10 @@ export function buildBuilding(set: BatchSet, chunk: string, spec: BuildingSpec):
   // Masa del edificio (fachada + volumen hacia el interior de la manzana), en un lote "wall" aparte
   // (es el único que proyecta sombra en perfiles BAJO/MEDIO). Tres franjas tonales dan suciedad en la base
   // y bajo la cornisa; el desplazamiento de UV aleatorio evita que todos los edificios repitan el mismo estuco.
-  // Casa Batlló como fachada de las plantas superiores: paleta, espejo y remate propios de cada edificio
-  // (se derivan de la semilla con un generador aparte para no alterar el resto del plan de edificios).
-  const bat = hasBatllo() ? (() => {
+  // Casa Batlló: solo las casas marcadas en `spec.batllo` (4 repartidas por el mapa) usan su fachada.
+  const bat = hasBatllo() && spec.batllo ? (() => {
     const br = new Rng(spec.seed ^ 0x9e3779b1);
-    const k = 0.92 + br.next() * 0.16;
-    return { variant: br.int(0, BATLLO_VARIANTS - 1), mirror: br.chance(0.5), fullRoof: br.chance(0.55), tint: [k, k, k * (0.97 + br.next() * 0.06), 1] as RGBA };
+    return { variant: spec.batllo.variant, mirror: br.chance(0.5), fullRoof: true, tint: [1, 1, 1, 1] as RGBA };
   })() : null;
   const yTopRelief = H + (bat?.fullRoof ? 1.5 : 0);
   // con tejado completo la masa de pared acaba donde empieza el tejado del relieve; la cresta del relieve queda por encima
@@ -216,5 +216,25 @@ export function buildBuilding(set: BatchSet, chunk: string, spec: BuildingSpec):
     const uc = (i + 0.5) * bw;
     M.windowRect(ctx, uc, yAttic + 0.5, Math.min(0.95, bw - 1.2), 1.5, { sill: true });
     if (rng.chance(0.5)) M.juliet(ctx, uc, yAttic + 0.5, Math.min(1.6, bw - 0.8));
+  }
+}
+
+/**
+ * Elige 4 casas para la fachada de la Casa Batlló, una frente a cada lado de la manzana de la basílica (norte, este, sur y oeste),
+ * entre edificios de fachada recta y planta baja de tiendas, con el ancho más cercano al de un solar de la Casa Batlló.
+ * Cada una usa una paleta distinta.
+ */
+export function pickBatlloHouses(specs: BuildingSpec[], idealWidth = 12.5): void {
+  for (let q = 0; q < 4; q++) {
+    let best: BuildingSpec | null = null;
+    for (const sp of specs) {
+      if (sp.chain !== `side${q}` || sp.seg.kind === "chamfer" || sp.ground !== "shops") continue;
+      // solo fachadas que dan a la calle que rodea la basílica (no a las calles salientes)
+      const mid = sp.u0 + sp.width / 2;
+      const cx = sp.seg.a.x + sp.seg.ux * mid, cz = sp.seg.a.z + sp.seg.uz * mid;
+      if (Math.min(Math.abs(cx), Math.abs(cz)) > 50 || Math.max(Math.abs(cx), Math.abs(cz)) > 80) continue;
+      if (!best || Math.abs(sp.width - idealWidth) < Math.abs(best.width - idealWidth)) best = sp;
+    }
+    if (best) best.batllo = { variant: q };
   }
 }

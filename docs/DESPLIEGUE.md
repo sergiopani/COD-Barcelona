@@ -7,7 +7,7 @@ El juego se publica como **un solo proceso Node** que sirve el cliente compilado
 - **Los GLB no están en git** (son grandes): colócalos en `public/assets/` antes de compilar. Si faltan, el juego avisa en consola y usa sustitutos procedurales
   (basílica, palmeras, coches y rifle provisionales), pero sin los modelos reales.
   - `assets-src/` (fuera de git) guarda los originales; `npm run optimize:models` genera las versiones ligeras en `public/assets/`
-    (simplificación de malla + texturas WebP; **108 MB → 21 MB**: basílica (fotogrametría ICGC, `npm run build:sagrada`) ≈ 11 MB / 276 k triángulos, rifle 5 MB / 60 k, coches 3,2 MB, palmera 0,3 MB).
+    (simplificación de malla + texturas WebP; **108 MB → 21 MB**: basílica 12,7 MB / 353 k triángulos, rifle 5 MB / 60 k, coches 3,2 MB, palmera 0,3 MB).
 
 ## 2. Compilar y ejecutar
 ```bash

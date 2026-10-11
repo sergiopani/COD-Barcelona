@@ -1,6 +1,6 @@
 import { Mesh, Scene, Vector3 } from "@babylonjs/core";
 import { ARM_END, STREET } from "../config";
-import { buildBuilding, planBuildings } from "./BuildingGenerator";
+import { buildBuilding, pickBatlloHouses, planBuildings } from "./BuildingGenerator";
 import { CollisionManager } from "./CollisionManager";
 import type { LightingRig } from "./Lighting";
 import { createMaterials, type MatKey, type MaterialSet } from "./Materials";
@@ -66,6 +66,7 @@ export class BarcelonaMap {
     await tick("Levantando edificios del Eixample…");
     await loadBatlloRelief();
     const specs = planBuildings(buildingChains, 1714);
+    pickBatlloHouses(specs);
     const bset = new BatchSet(mats.tile);
     for (const spec of specs) buildBuilding(bset, spec.chain.startsWith("cap") ? "caps" : spec.chain, spec);
     vertices += bset.totalVertices;

@@ -43,11 +43,11 @@ Otros comandos: `npm run build` (typecheck + build de producción en `dist/`), `
 
 ## La Sagrada Família (modelo 3D)
 
-El modelo activo (`public/assets/buildings/sagrada-familia.glb`, ~11 MB, 276 k triángulos, 71 texturas WebP) es la **fotogrametría del ICGC**
-(Institut Cartogràfic i Geològic de Catalunya, visor `betaserver.icgc.cat/cesium/SagradaFamilia3D.html`): son datos reales de la basílica **tal como estaba en 2015**
-(sin torre central ni fachada de la Gloria terminada, con grúas y huecos de la captura). Se genera con `npm run build:sagrada` (descarga las teselas, las gira 45° para
-alinearlas con la cuadrícula del Eixample, recorta a la manzana y aclara las texturas). Configuración: `rotationYDeg: 180`, tinte, posición.
-El archivo está en `.gitignore` (se regenera). Ajústalo en
+El modelo activo (`public/assets/buildings/sagrada-familia.glb`, ~13 MB, 353 k triángulos tras optimizar) es el **modelo original aportado por el usuario**
+(`assets-src/buildings/sagrada-familia.glb`, 930 k triángulos y texturas 4096²; se optimiza con `npm run optimize:models`).
+Está configurado con `rotationYDeg: -90` (fachada de la Gloria al sur), `scale: 42` (≈ 101 × 124 × 98 m, cabe en la manzana) y un tinte cálido.
+Alternativas disponibles (no activas): la fotogrametría del ICGC (`npm run build:sagrada-icgc` → `sagrada-familia-icgc.glb`) y la maqueta de MiniWorld3D
+(`scripts/stl-to-glb.mjs`). El archivo está en `.gitignore` por su tamaño. Ajústalo en
 `public/assets/buildings/sagrada-familia.config.json` (posición, rotación, escala, altura objetivo, alineado al suelo,
 colliders). Instrucciones completas en `public/assets/buildings/README.txt`. Sin el archivo, el juego muestra un error
 claro en la consola y usa una **basílica provisional procedural** (solo volumetría esquemática, no es fiel).
@@ -101,15 +101,14 @@ __game.tp(x, z, yawGrados) // teletransporte para inspeccionar zonas
 - Texturas 100 % procedurales; sustituibles más adelante por texturas PBR reales.
 - El bundle de Babylon (~7,6 MB, 1,7 MB gzip) aún no está optimizado con imports profundos (Fase 4/5).
 
-## Casa Batlló en los edificios
+## Casa Batlló (4 casas)
 
-Todos los edificios del Eixample usan la fachada de la **Casa Batlló** (modelo 3D aportado por el usuario) por encima de la planta baja, que sigue siendo procedural (tiendas, rótulos, portales).
-Como el modelo original tiene 1,9 M de triángulos, `npm run bake:batllo` lo hornea a una textura frontal con silueta alfa en **4 paletas** (mosaico azul/verde, dorado, verde, rosado)
-y a un mapa de relieve; el juego genera de ahí una malla de ~5 k triángulos por edificio (`src/game/world/BatlloFacade.ts`) donde los balcones sobresalen de verdad.
-Cada edificio varía paleta, espejo, remate (tejado completo con dragón y torre, o cortado con cornisa), proporciones y brillo según su semilla.
-Sin los archivos `casa-batllo-*` el juego vuelve a las fachadas procedurales antiguas. Limitaciones: el relieve es una elevación frontal (no un modelo completo: de lado se ve como una lámina con profundidad),
-las proporciones se estiran para adaptarse al ancho de cada edificio y las sombras proyectadas no incluyen el relieve.
+Las casas del Eixample usan las fachadas procedurales; **solo 4** (una frente a cada lado de la manzana de la basílica, `pickBatlloHouses` en `BuildingGenerator.ts`) tienen la fachada de la
+**Casa Batlló** (modelo 3D aportado por el usuario) por encima de la planta baja, que sigue siendo procedural (tiendas, rótulos). Cada una usa una paleta distinta (mosaico azul/verde, dorado, verde, rosado).
+Como el modelo original tiene 1,9 M de triángulos, `npm run bake:batllo` lo hornea a una textura frontal con silueta alfa y a un mapa de relieve; el juego genera de ahí una malla de ~4 k triángulos
+por casa (`src/game/world/BatlloFacade.ts`) donde los balcones sobresalen de verdad. Sin los archivos `casa-batllo-*` esas 4 casas usan la fachada procedural. Limitación: es una elevación frontal
+(de lado se ve como una lámina con relieve) y las sombras proyectadas no incluyen el relieve.
 
 ## Créditos de datos
 
-Ver `CREDITOS.md` (ICGC para la basílica; MiniWorld3D para la maqueta alternativa).
+Ver `CREDITOS.md`.
