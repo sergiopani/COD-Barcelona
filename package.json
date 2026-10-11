@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Barcelona FPS \u2014 shooter en primera persona en la manzana de la Sagrada Familia (Babylon.js)",
+  "description": "Barcelona FPS — shooter en primera persona en la manzana de la Sagrada Familia (Babylon.js)",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && tsc --noEmit -p server/tsconfig.json && vite build",
@@ -19,7 +19,8 @@
     "build:server": "node scripts/build-server.mjs",
     "build:prod": "npm run build && node scripts/precompress.mjs dist && npm run build:server",
     "start": "node dist-server/index.mjs",
-    "start:dev": "tsx server/src/index.ts"
+    "start:dev": "tsx server/src/index.ts",
+    "build:sagrada": "node scripts/icgc-index.mjs && node scripts/icgc-fetch.mjs 75 150 && node scripts/icgc-to-glb.mjs public/assets/buildings/sagrada-familia.glb --rot 45 --cx 8 --cz 8 --cy 31 --box -54,-54,54,54 --ground 0 --above 1.3 --bright 1.15 --gamma 1.9 --tex 1024"
   },
   "dependencies": {
     "ws": "^8.22.0"

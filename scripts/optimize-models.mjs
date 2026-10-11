@@ -10,14 +10,16 @@ import { ALL_EXTENSIONS } from "@gltf-transform/extensions";
 import { dedup, prune, simplify, textureCompress, weld } from "@gltf-transform/functions";
 
 const JOBS = {
-  sagrada: { file: "buildings/sagrada-familia.glb", ratio: 0.38, error: 0.002, tex: 2048, quality: 86 },
+  // Alternativa (no se usa por defecto): maqueta de MiniWorld3D convertida con scripts/stl-to-glb.mjs.
+  // La basílica activa es la fotogrametría del ICGC (npm run build:sagrada); este trabajo escribe en otro archivo para no pisarla.
+  sagradaMiniworld: { file: "buildings/sagrada-familia.glb", out: "buildings/sagrada-familia-miniworld.glb", optional: true, ratio: 1, error: 0, tex: 1024, quality: 88 },
   rifle: { file: "weapons/m1a-springfield.glb", ratio: 0.2, error: 0.0008, tex: 2048, quality: 88 },
   cars: { file: "props/car-pack.glb", ratio: 1, error: 0, tex: 1024, quality: 85 },
   palm: { file: "props/palm-tree.glb", ratio: 1, error: 0, tex: 1024, quality: 88 },
 };
 
 const wanted = process.argv.slice(2);
-const names = wanted.length ? wanted : Object.keys(JOBS);
+const names = wanted.length ? wanted : Object.keys(JOBS).filter((k) => !JOBS[k].optional);
 await MeshoptSimplifier.ready;
 const io = new NodeIO().registerExtensions(ALL_EXTENSIONS);
 
@@ -28,7 +30,7 @@ for (const name of names) {
   const job = JOBS[name];
   if (!job) throw new Error(`Modelo desconocido: ${name} (${Object.keys(JOBS).join(", ")})`);
   const src = path.resolve("assets-src", job.file);
-  const dst = path.resolve("public/assets", job.file);
+  const dst = path.resolve("public/assets", job.out ?? job.file);
   if (!fs.existsSync(src)) throw new Error(`Falta el original ${src}`);
   const doc = await io.read(src);
   const before = tris(doc);

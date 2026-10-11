@@ -1,11 +1,11 @@
 {
   "position": [0, 0.14, 0],
-  "rotationYDeg": -90,
-  "scale": 42,
+  "rotationYDeg": 180,
+  "scale": 1,
   "targetHeight": null,
-  "centerXZ": true,
-  "alignToGround": true,
+  "centerXZ": false,
+  "alignToGround": false,
   "castShadows": false,
-  "tint": [1.12, 1.0, 0.84],
+  "tint": [1.55, 1.5, 1.42],
   "colliders": []
 }

@@ -43,9 +43,11 @@ Otros comandos: `npm run build` (typecheck + build de producción en `dist/`), `
 
 ## La Sagrada Família (modelo 3D)
 
-El modelo (`public/assets/buildings/sagrada-familia.glb`, ~34 MB, 930 k triángulos, texturas 4096² embebidas) está
-configurado con `rotationYDeg: -90` (fachada de la Gloria al sur) y `scale: 42` (≈ 101 × 124 × 98 m, cabe en la manzana).
-El archivo está en `.gitignore` por su tamaño. Ajústalo en
+El modelo activo (`public/assets/buildings/sagrada-familia.glb`, ~11 MB, 276 k triángulos, 71 texturas WebP) es la **fotogrametría del ICGC**
+(Institut Cartogràfic i Geològic de Catalunya, visor `betaserver.icgc.cat/cesium/SagradaFamilia3D.html`): son datos reales de la basílica **tal como estaba en 2015**
+(sin torre central ni fachada de la Gloria terminada, con grúas y huecos de la captura). Se genera con `npm run build:sagrada` (descarga las teselas, las gira 45° para
+alinearlas con la cuadrícula del Eixample, recorta a la manzana y aclara las texturas). Configuración: `rotationYDeg: 180`, tinte, posición.
+El archivo está en `.gitignore` (se regenera). Ajústalo en
 `public/assets/buildings/sagrada-familia.config.json` (posición, rotación, escala, altura objetivo, alineado al suelo,
 colliders). Instrucciones completas en `public/assets/buildings/README.txt`. Sin el archivo, el juego muestra un error
 claro en la consola y usa una **basílica provisional procedural** (solo volumetría esquemática, no es fiel).
@@ -98,3 +100,7 @@ __game.tp(x, z, yawGrados) // teletransporte para inspeccionar zonas
 - El interior de la manzana de la basílica no es transitable (verja con colisión).
 - Texturas 100 % procedurales; sustituibles más adelante por texturas PBR reales.
 - El bundle de Babylon (~7,6 MB, 1,7 MB gzip) aún no está optimizado con imports profundos (Fase 4/5).
+
+## Créditos de datos
+
+Ver `CREDITOS.md` (ICGC para la basílica; MiniWorld3D para la maqueta alternativa).

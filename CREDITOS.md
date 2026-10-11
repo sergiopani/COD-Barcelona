@@ -1,0 +1,9 @@
+# Créditos de datos y modelos
+
+- **Basílica de la Sagrada Família (modelo activo):** fotogrametría 3D © **ICGC – Institut Cartogràfic i Geològic de Catalunya**, obtenida de
+  <https://betaserver.icgc.cat/cesium/SagradaFamilia3D.html> (teselas `n_bcn_tot/*.gltf`, estado de la obra en 2015). Esa página no indica la licencia:
+  los datos abiertos del ICGC suelen publicarse con CC BY 4.0, pero **no está confirmado para este servidor de pruebas**; comprobar los términos antes de publicar el juego.
+  Se modifican (giro, recorte, brillo/gamma de texturas) con `scripts/icgc-to-glb.mjs`.
+- **Maqueta alternativa de la basílica (no activa):** «Sagrada Familia – Barcelona, Spain» de **MiniWorld3D** (Printables), modelo original de Dany Sánchez y Brian Mauricio Sánchez.
+  El PDF recibido pide dar crédito; no indica la licencia (verificar uso en juegos). Conversión: `scripts/stl-to-glb.mjs`; copia del GLB en `assets-src/buildings/`.
+- Palmera, rifle M1A y pack de coches: modelos aportados por el usuario (origen y licencia no documentados aquí).
