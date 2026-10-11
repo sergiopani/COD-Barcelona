@@ -1,4 +1,5 @@
-import { Color3, Mesh, MeshBuilder, PBRMaterial, Scene, TransformNode, Vector3 } from "@babylonjs/core";
+import { Mesh, MeshBuilder, Scene, TransformNode, Vector3 } from "@babylonjs/core";
+import { buildCharacter } from "../characters/Character";
 import type { AudioManager } from "../audio/AudioManager";
 import { type ActorHit, Ballistics, type Shootable, rayVsSphere, rayVsVerticalCylinder } from "../weapons/Ballistics";
 import type { Effects } from "../weapons/Effects";
@@ -25,26 +26,6 @@ const HEAD_Y = 1.62;
 const HEAD_R = 0.15;
 const TORSO_R = 0.3;
 const WALK_SPEED = 1.7;
-
-let sharedMats: { cloth: PBRMaterial; vest: PBRMaterial; skin: PBRMaterial; dark: PBRMaterial; hit: PBRMaterial } | null = null;
-function materials(scene: Scene): NonNullable<typeof sharedMats> {
-  if (sharedMats) return sharedMats;
-  const mk = (n: string, c: [number, number, number], rough = 0.8): PBRMaterial => {
-    const m = new PBRMaterial(n, scene);
-    m.albedoColor = new Color3(...c);
-    m.metallic = 0;
-    m.roughness = rough;
-    return m;
-  };
-  sharedMats = {
-    cloth: mk("botCloth", [0.1, 0.12, 0.16]),
-    vest: mk("botVest", [0.75, 0.22, 0.08], 0.6),
-    skin: mk("botSkin", [0.62, 0.45, 0.36], 0.7),
-    dark: mk("botDark", [0.04, 0.04, 0.05], 0.5),
-    hit: mk("botHit", [1, 0.9, 0.9], 0.5),
-  };
-  return sharedMats;
-}
 
 type State = "patrol" | "aim" | "cooldown" | "dead";
 
@@ -74,7 +55,6 @@ export class Bot implements Shootable {
   private readonly allMeshes: Mesh[] = [];
 
   constructor(scene: Scene, readonly id: number, readonly name: string) {
-    const mats = materials(scene);
     this.root = new TransformNode(`bot${id}`, scene);
     // cuerpo de colisión (invisible) para moverse con el motor de colisiones
     this.body = MeshBuilder.CreateBox(`botBody${id}`, { size: 0.1 }, scene);
@@ -85,42 +65,14 @@ export class Bot implements Shootable {
     this.body.ellipsoidOffset = new Vector3(0, 0.9, 0);
     this.root.parent = this.body;
 
-    // Solo torso y piernas proyectan sombra (menos draw calls en el mapa de sombras)
-    const add = (mesh: Mesh, mat: PBRMaterial, cast = false): Mesh => {
-      mesh.material = mat;
-      mesh.parent = this.root;
-      mesh.isPickable = false;
-      mesh.receiveShadows = true;
-      this.allMeshes.push(mesh);
-      if (cast) this.casters.push(mesh);
-      return mesh;
-    };
-    const torso = add(MeshBuilder.CreateBox(`bt${id}`, { width: 0.44, height: 0.62, depth: 0.24 }, scene), mats.vest, true);
-    torso.position.y = 1.2;
-    const head = add(MeshBuilder.CreateSphere(`bh${id}`, { diameter: HEAD_R * 2, segments: 8 }, scene), mats.skin, false);
-    head.position.y = HEAD_Y;
-    const helmet = add(MeshBuilder.CreateSphere(`bhm${id}`, { diameter: HEAD_R * 2.25, segments: 8, slice: 0.55 }, scene), mats.dark);
-    helmet.position.y = HEAD_Y + 0.02;
-    const hip = add(MeshBuilder.CreateBox(`bp${id}`, { width: 0.4, height: 0.22, depth: 0.22 }, scene), mats.cloth);
-    hip.position.y = 0.83;
-    const mkLeg = (x: number): Mesh => {
-      const l = add(MeshBuilder.CreateBox(`bl${id}_${x}`, { width: 0.17, height: 0.76, depth: 0.2 }, scene), mats.cloth, true);
-      l.setPivotPoint(new Vector3(0, 0.38, 0)); // gira desde la cadera
-      l.position.set(x, 0.38 + 0.0, 0);
-      return l;
-    };
-    this.legL = mkLeg(-0.11);
-    this.legR = mkLeg(0.11);
-    const mkArm = (x: number): Mesh => {
-      const a = add(MeshBuilder.CreateBox(`ba${id}_${x}`, { width: 0.11, height: 0.56, depth: 0.13 }, scene), mats.cloth);
-      a.setPivotPoint(new Vector3(0, 0.26, 0));
-      a.position.set(x, 1.18, 0.06);
-      return a;
-    };
-    this.armL = mkArm(-0.29);
-    this.armR = mkArm(0.29);
-    const rifle = add(MeshBuilder.CreateBox(`br${id}`, { width: 0.06, height: 0.08, depth: 0.85 }, scene), mats.dark);
-    rifle.position.set(0.14, 1.12, 0.35);
+    // Aspecto compartido por todos los personajes (ver characters/Character.ts); solo torso y piernas proyectan sombra
+    const parts = buildCharacter(scene, id, this.root);
+    this.legL = parts.legL;
+    this.legR = parts.legR;
+    this.armL = parts.armL;
+    this.armR = parts.armR;
+    this.allMeshes.push(...parts.meshes);
+    this.casters.push(...parts.casters);
     this.lastPos.setAll(0);
   }
 

@@ -116,6 +116,12 @@ El panorama aportado (`assets-src/panorama/sf_0.jpeg`, foto esférica de Barcelo
 - **Cielo con foto real** (casilla «Cielo con foto real» del menú, activada por defecto), recoloreado a **día despejado** (azul con nubes blancas; el original era nublado): cúpula con nubes, la silueta de Barcelona, el Tibidabo, la torre Glòries y el mar. La basílica de la foto se ha retirado con un parche de ciudad/cielo
   vecinos, y bajo el horizonte se funde con la niebla. Sigue calculándose la iluminación con el cielo procedural. Calidad 4096 px (Bajo/Medio) o 6000 px (Alto). Limitación: con el zoom de 8× del francotirador la foto se ve blanda (≈ 117 px para 7°).
 
+## Personajes
+
+Todos los personajes (bots y jugadores remotos) comparten el aspecto de `src/game/characters/Character.ts`: figura de bloques estilizada con chándal azul marino, camiseta roja con franja central, gorra marrón de cuadros con visera,
+barba corta, pantalón con franjas laterales rojas y blancas, calcetines blancos y chancletas negras (inspirado en una foto de referencia aportada por el usuario; es un muñeco estilizado, no un parecido facial).
+Cada miembro es una sola malla con colores por vértice y un único material; las dimensiones, pivotes y zonas de impacto (cabeza, torso, piernas) son las de siempre, así que la jugabilidad y las pruebas de combate no cambian.
+
 ## Helicópteros de policía
 
 Hasta 4 helicópteros (2 en Bajo, 3 en Medio, 4 en Alto; `helicopters` en `GraphicsSettings.ts`) sobrevuelan la ciudad a 90-150 m de altura (`src/game/world/Helicopters.ts`, modelo `police-helicopter.glb`, 13 k triángulos).
