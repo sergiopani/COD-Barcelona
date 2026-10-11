@@ -3,8 +3,8 @@
 Shooter en primera persona para navegador (TypeScript + Babylon.js + Vite), ambientado **solo** en la manzana de la
 Sagrada Família y su entorno inmediato (Eixample, Barcelona).
 
-**Estado: FASE 3 completada (multijugador online)** — individual con bots y multijugador de hasta 8 jugadores con servidor autoritativo (Node + WebSockets).
-Ver `docs/COMBATE.md` y `docs/MULTIJUGADOR.md`. Faltan las fases 4–5 (más mejora visual y publicación/despliegue).
+**Estado: FASES 1–5 completadas** — escenario de la Sagrada Família, francotirador con mira, modo individual con bots, multijugador online (hasta 8, servidor
+autoritativo), modelos optimizados y despliegue de producción. Ver `docs/COMBATE.md`, `docs/MULTIJUGADOR.md`, `docs/GRAFICOS.md` y `docs/DESPLIEGUE.md`.
 
 ## Requisitos
 
@@ -36,6 +36,8 @@ En el menú inicial/pausa: **Calidad gráfica** (Bajo/Medio/Alto) y **Asfalto mo
 Gráficos: `docs/GRAFICOS.md` (perfiles, medidas, texturas recomendadas). HDR opcional: `public/assets/env/README.txt`.
 
 Multijugador: `docs/MULTIJUGADOR.md`. Tests: `npm test` (servidor + interpolación; arranca el servidor de prueba solo).
+
+Producción: `npm run build:prod && npm start` (un solo proceso que sirve cliente + multijugador en :8080). Ver `docs/DESPLIEGUE.md`.
 
 Otros comandos: `npm run build` (typecheck + build de producción en `dist/`), `npm run preview`, `npm run typecheck`.
 

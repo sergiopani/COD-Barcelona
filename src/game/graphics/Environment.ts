@@ -1,3 +1,4 @@
+import { ASSETS } from "../assets";
 import {
   BaseTexture,
   CubeTexture,
@@ -29,7 +30,7 @@ export interface EnvironmentRig {
   dispose(): void;
 }
 
-const ENV_URLS = { env: "/assets/env/environment.env", hdr: "/assets/env/environment.hdr" };
+const ENV_URLS = { env: ASSETS.envEnv, hdr: ASSETS.envHdr };
 
 function registerSkyShader(): void {
   Effect.ShadersStore["bfpsSkyVertexShader"] = `

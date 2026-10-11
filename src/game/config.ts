@@ -40,11 +40,3 @@ export const PLAYER = {
   mouseSensitivity: 0.0022,
   killPlaneY: -20,
 } as const;
-
-export const ASSETS = {
-  sagradaFamiliaGlb: "/assets/buildings/sagrada-familia.glb",
-  palmGlb: "/assets/props/palm-tree.glb",
-  carPackGlb: "/assets/props/car-pack.glb",
-  rifleGlb: "/assets/weapons/m1a-springfield.glb",
-  sagradaFamiliaConfig: "/assets/buildings/sagrada-familia.config.json",
-} as const;

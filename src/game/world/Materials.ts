@@ -18,10 +18,44 @@ export type MatKey =
   | "paint"
   | "awning"
   | "plain"
+  | "signText"
+  | "numText"
   | "marking"
   | "garden"
   | "foliage"
   | "trunk";
+
+/** Nombres de comercios y números de portal del atlas de rótulos (la disposición debe coincidir con FacadeModules). */
+export const SIGN_NAMES = [
+  "FARMÀCIA", "PANADERIA", "BAR LA SAGRADA", "ESTANC", "FRUITES", "PERRUQUERIA", "CAFETERIA", "LLIBRERIA",
+  "ÒPTICA", "SUPERMERCAT", "FERRETERIA", "RESTAURANT", "TINTORERIA", "CAL PEPE", "BODEGA", "PASTISSERIA",
+];
+export const SIGN_ATLAS = { cols: 2, rows: 8 };
+export const NUM_ATLAS = { cols: 8, rows: 4 };
+
+function makeTextAtlas(scene: Scene, name: string, cols: number, rows: number, cw: number, ch: number, labels: string[], font: string): DynamicTexture {
+  const tex = new DynamicTexture(name, { width: cols * cw, height: rows * ch }, scene, true, Texture.TRILINEAR_SAMPLINGMODE);
+  const ctx = tex.getContext() as CanvasRenderingContext2D;
+  ctx.clearRect(0, 0, cols * cw, rows * ch);
+  ctx.fillStyle = "#fff";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  labels.forEach((text, i) => {
+    const cx = (i % cols) * cw + cw / 2;
+    const cy = Math.floor(i / cols) * ch + ch / 2;
+    let size = ch * 0.62;
+    ctx.font = `${font.replace("{s}", String(size))}`;
+    while (ctx.measureText(text).width > cw * 0.92 && size > 8) {
+      size -= 2;
+      ctx.font = font.replace("{s}", String(size));
+    }
+    ctx.fillText(text, cx, cy + 2);
+  });
+  tex.hasAlpha = true;
+  tex.anisotropicFilteringLevel = 8;
+  tex.update(true);
+  return tex;
+}
 
 export interface MaterialSet {
   mat: Record<MatKey, PBRMaterial>;
@@ -324,6 +358,17 @@ export function createMaterials(scene: Scene): MaterialSet {
   }, 1.6);
 
   const stuccoMat = pbr(scene, "stucco", { tex: stuccoTex, roughness: 0.93 });
+  const signTex = makeTextAtlas(scene, "signAtlas", SIGN_ATLAS.cols, SIGN_ATLAS.rows, 512, 128, SIGN_NAMES, "bold {s}px 'Arial Narrow', Arial, Helvetica, sans-serif");
+  const numTex = makeTextAtlas(scene, "numAtlas", NUM_ATLAS.cols, NUM_ATLAS.rows, 128, 128, Array.from({ length: 32 }, (_, i) => String(i * 2 + 2)), "bold {s}px Arial, Helvetica, sans-serif");
+  const textMat = (name: string, tex: DynamicTexture): PBRMaterial => {
+    const m = pbr(scene, name, { roughness: 0.5, alphaTest: true, double: true });
+    m.albedoTexture = tex;
+    m.useAlphaFromAlbedoTexture = true;
+    m.alphaCutOff = 0.45;
+    m.zOffset = -2;
+    return m;
+  };
+
   const mat = {
     stucco: stuccoMat,
     wall: stuccoMat, // masas de pared (lote aparte para las sombras), mismo material
@@ -339,6 +384,8 @@ export function createMaterials(scene: Scene): MaterialSet {
     paint: pbr(scene, "paint", { color: [1, 1, 1], metallic: 0.45, roughness: 0.28 }),
     awning: pbr(scene, "awning", { tex: awningTex, roughness: 0.85, double: true }),
     plain: pbr(scene, "plain", { color: [1, 1, 1], roughness: 0.55 }),
+    signText: textMat("signText", signTex),
+    numText: textMat("numText", numTex),
     marking: pbr(scene, "marking", { color: [0.85, 0.85, 0.82], roughness: 0.75 }),
     garden: pbr(scene, "garden", { tex: gardenTex, roughness: 0.95 }),
     foliage: pbr(scene, "foliage", { tex: foliageTex, roughness: 0.8 }),
@@ -371,6 +418,8 @@ export function createMaterials(scene: Scene): MaterialSet {
     paint: 1,
     awning: 1,
     plain: 1,
+    signText: 1,
+    numText: 1,
     marking: 1,
     garden: 6,
     foliage: 3,

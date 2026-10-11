@@ -1,6 +1,6 @@
 import { Camera, ImportMeshAsync, Matrix, Mesh, MeshBuilder, PBRMaterial, Scene, StandardMaterial, Color3, TransformNode, Vector3 } from "@babylonjs/core";
 import "@babylonjs/loaders/glTF";
-import { ASSETS } from "../config";
+import { ASSETS } from "../assets";
 import { glbExists } from "../world/assetUtil";
 import type { WeaponDefinition } from "./WeaponDefinition";
 

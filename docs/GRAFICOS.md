@@ -49,11 +49,19 @@ Equipo de prueba: Apple M1 Pro, navegador integrado de la app, 1024×768. Tiempo
 
 | Recurso | Estado | Recomendación |
 | --- | --- | --- |
-| Basílica (GLB) | 3 texturas 4096² JPEG embebidas (≈ 270 MB de VRAM con mipmaps). Nítidas de lejos; de cerca se nota la densidad del atlas, no hay mapa de detalle. | Convertir a KTX2/Basis (−75 % VRAM) con `gltf-transform` y, si se quiere más detalle, un mapa de detalle de piedra tileable (CC0, p. ej. ambientCG). |
+| Basílica (GLB) | Ya optimizada: 3 texturas 2048² WebP (≈ 70 MB de VRAM con mipmaps). Nítidas de lejos; de cerca se nota la densidad del atlas, no hay mapa de detalle. | Convertir a KTX2/Basis (−75 % VRAM) con `gltf-transform` y, si se quiere más detalle, un mapa de detalle de piedra tileable (CC0, p. ej. ambientCG). |
 | Palmeras (GLB) | 1 textura PNG 2048², 1 812 triángulos. Correcta. | Añadir variante de palmera seca/otra especie para variedad. |
 | Fachadas, calzada, aceras | 512² procedurales con tile de 2,4–6 m: nítidas y con ORM, pero con patrón reconocible a corta distancia. | Sustituir por texturas PBR reales (albedo/normal/ORM, 1–2K) de estuco, asfalto y baldosa panot. |
 | Coches y mobiliario | Geometría de cajas/prismas sin textura. Es lo más débil visualmente. | Modelos GLB de coches y mobiliario (low-poly PBR). |
 | HDR | No existe. | Un .hdr/.env de calle diurna soleada (ver `public/assets/env/README.txt`). |
+
+## Fase 4: optimización y detalle urbano
+
+- **Modelos optimizados** (`npm run optimize:models`, `scripts/optimize-models.mjs`): simplificación de malla con meshoptimizer y texturas a WebP
+  (basílica 930 k → 353 k triángulos y 4096² → 2048²; rifle 274 k → 60 k; coches 41 PNG → 1024² WebP). 108 MB → 21 MB sin cambio visible apreciable en las capturas.
+  Los originales se conservan en `assets-src/` (fuera de git).
+- **Rótulos de comercios con texto real** (atlas de 16 nombres: FARMÀCIA, PANADERIA, ESTANC…) y **placas con el número del portal**.
+- Texturas con filtrado anisotrópico, sombras con proxy y perfiles gráficos (ver arriba).
 
 ## Limitaciones conocidas
 

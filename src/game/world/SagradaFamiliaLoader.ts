@@ -1,6 +1,6 @@
 import { AbstractMesh, Color3, ImportMeshAsync, Mesh, PBRMaterial, Scene, TransformNode, Vector3 } from "@babylonjs/core";
 import "@babylonjs/loaders/glTF";
-import { ASSETS } from "../config";
+import { ASSETS } from "../assets";
 import type { CollisionManager } from "./CollisionManager";
 import type { MaterialSet } from "./Materials";
 import { glbExists } from "./assetUtil";

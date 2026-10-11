@@ -14,7 +14,10 @@ export class NetClient {
     const env = (import.meta as unknown as { env: Record<string, string | undefined> }).env.VITE_SERVER_URL;
     if (env) return env;
     const proto = location.protocol === "https:" ? "wss" : "ws";
-    return `${proto}://${location.hostname}:8080`;
+    // build de producción: el mismo servidor que sirve la página atiende el WebSocket (mismo origen);
+    // en desarrollo (Vite en :5173) el servidor de juego corre aparte en :8080
+    const prod = (import.meta as unknown as { env: { PROD?: boolean } }).env.PROD;
+    return prod ? `${proto}://${location.host}` : `${proto}://${location.hostname}:8080`;
   }
 
   connect(url: string, name: string, room: string | undefined, timeoutMs = 6000): Promise<void> {

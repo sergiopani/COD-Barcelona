@@ -1,6 +1,6 @@
 import { ImportMeshAsync, Matrix, Mesh, PBRMaterial, Scene, TransformNode, Vector3 } from "@babylonjs/core";
 import "@babylonjs/loaders/glTF";
-import { ASSETS } from "../config";
+import { ASSETS } from "../assets";
 import { Rng } from "../util/rng";
 import { glbExists } from "./assetUtil";
 

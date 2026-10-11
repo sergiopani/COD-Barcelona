@@ -140,7 +140,7 @@ export class BarcelonaMap {
       if (!castShadows) continue;
       if (key === "wall") this.lighting.addShadowCaster(mesh, "mass");
       else if (key === "stone") this.lighting.addShadowCaster(mesh, "detail");
-      else if (key !== "railing" && key !== "glass" && key !== "marking" && key !== "stucco" && key !== "plain" && key !== "shutter" && key !== "roller" && key !== "awning") {
+      else if (key !== "railing" && key !== "glass" && key !== "marking" && key !== "stucco" && key !== "plain" && key !== "shutter" && key !== "roller" && key !== "awning" && key !== "signText" && key !== "numText") {
         this.lighting.addShadowCaster(mesh, "prop");
       }
     }

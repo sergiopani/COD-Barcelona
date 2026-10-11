@@ -108,11 +108,13 @@ export class MeshBatch {
   }
 
   /** Panel vertical orientado hacia fuera con UV 0..1 (para texturas de ventana, persiana, reja…). */
-  addPanel(f: Frame, u0: number, u1: number, v0: number, v1: number, w: number, color: RGBA = [1, 1, 1, 1], uvRepeat: [number, number] = [1, 1]): void {
+  addPanel(f: Frame, u0: number, u1: number, v0: number, v1: number, w: number, color: RGBA = [1, 1, 1, 1], uvRepeat: [number, number] = [1, 1], uvRect?: [number, number, number, number]): void {
+    // uvRect = [uMin, vMin, uMax, vMax] dentro de un atlas de texturas
+    const [a0, b0, a1, b1] = uvRect ?? [0, 0, uvRepeat[0], uvRepeat[1]];
     this.addQuad(
       [f.pt(u0, v0, w), f.pt(u1, v0, w), f.pt(u1, v1, w), f.pt(u0, v1, w)],
       [f.nx, 0, f.nz],
-      [[0, 0], [uvRepeat[0], 0], [uvRepeat[0], uvRepeat[1]], [0, uvRepeat[1]]],
+      [[a0, b0], [a1, b0], [a1, b1], [a0, b1]],
       color,
     );
   }

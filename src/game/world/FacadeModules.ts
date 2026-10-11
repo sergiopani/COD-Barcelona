@@ -1,5 +1,6 @@
 import { type BatchSet, F, Frame, type RGBA } from "./MeshBatch";
 import { Rng } from "../util/rng";
+import { NUM_ATLAS, SIGN_ATLAS, SIGN_NAMES } from "./Materials";
 
 /**
  * Módulos arquitectónicos de fachada (ventanas, balcones, persianas, escaparates, portales…).
@@ -188,6 +189,17 @@ export function portal(c: FacadeCtx, u: number, w: number, h: number): void {
   rail.addPanel(f, u - w / 2 + 0.2, u + w / 2 - 0.2, h * 0.38, h - 0.2, 0.125, [1, 1, 1, 1], [1.2, 1.4]);
   plain.addBox(f, u, h * 0.36, 0.11, w, 0.06, 0.04, [0.6, 0.55, 0.3, 1], F.BACK | F.DOWN);
   stone.addBox(f, u, 0.06, 0.3, w + 0.8, 0.12, 0.6, STONE_LIGHT, F.BACK); // peldaño
+  // placa con el número del portal
+  plain.addBox(f, u + w / 2 + 0.75, 2.0, 0.04, 0.36, 0.28, 0.03, [0.9, 0.9, 0.88, 1], F.BACK | F.DOWN);
+  const ni = rng.int(0, 31);
+  const nc = ni % NUM_ATLAS.cols;
+  const nr = Math.floor(ni / NUM_ATLAS.cols);
+  set.get(chunk, "numText").addPanel(f, u + w / 2 + 0.75 - 0.15, u + w / 2 + 0.75 + 0.15, 2.0 - 0.115, 2.0 + 0.115, 0.058, [0.08, 0.1, 0.35, 1], [1, 1], [
+    nc / NUM_ATLAS.cols,
+    1 - (nr + 1) / NUM_ATLAS.rows,
+    (nc + 1) / NUM_ATLAS.cols,
+    1 - nr / NUM_ATLAS.rows,
+  ]);
 }
 
 const SHOP_SIGN_COLORS: RGBA[] = [
@@ -225,7 +237,20 @@ export function shopfront(c: FacadeCtx, u: number, bw: number, h: number): void 
   plain.addBox(f, u + ow * 0.2, (base + top) / 2, 0.065, 0.05, top - base, 0.06, [0.08, 0.08, 0.09, 1], F.BACK | F.DOWN);
   // rótulo
   plain.addBox(f, u, h - 0.45, 0.14, ow + 0.1, 0.62, 0.12, sign, F.BACK | F.DOWN);
-  plain.addBox(f, u, h - 0.45, 0.21, ow * 0.55, 0.14, 0.02, [0.96, 0.95, 0.9, 1], F.BACK | F.DOWN);
+  // rótulo con el nombre del comercio (atlas de texto); el color del texto contrasta con el del rótulo
+  const lum = sign[0] * 0.3 + sign[1] * 0.59 + sign[2] * 0.11;
+  const ti = rng.int(0, SIGN_NAMES.length - 1);
+  const col = ti % SIGN_ATLAS.cols;
+  const row = Math.floor(ti / SIGN_ATLAS.cols);
+  const tw = Math.min(ow * 0.9, 2.4);
+  const th = tw / 4;
+  const tc: RGBA = lum < 0.5 ? [1, 1, 1, 1] : [0.06, 0.06, 0.06, 1];
+  set.get(chunk, "signText").addPanel(f, u - tw / 2, u + tw / 2, h - 0.45 - th / 2, h - 0.45 + th / 2, 0.215, tc, [1, 1], [
+    col / SIGN_ATLAS.cols,
+    1 - (row + 1) / SIGN_ATLAS.rows,
+    (col + 1) / SIGN_ATLAS.cols,
+    1 - row / SIGN_ATLAS.rows,
+  ]);
   // persiana enrollable bajada (cierra el escaparate) en ~35 % de los locales
   const r = rng.next();
   if (r < 0.35) {

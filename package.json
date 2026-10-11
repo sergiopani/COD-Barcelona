@@ -14,16 +14,27 @@
     "test:server": "tsx server/test/integration.ts",
     "test:interp": "tsx server/test/interp.ts",
     "dev:all": "node scripts/dev-all.mjs",
-    "test": "npm run test:interp && npm run test:server"
+    "test": "npm run test:interp && npm run test:server",
+    "optimize:models": "node scripts/optimize-models.mjs",
+    "build:server": "node scripts/build-server.mjs",
+    "build:prod": "npm run build && node scripts/precompress.mjs dist && npm run build:server",
+    "start": "node dist-server/index.mjs",
+    "start:dev": "tsx server/src/index.ts"
   },
   "dependencies": {
-    "@babylonjs/core": "9.30.0",
-    "@babylonjs/loaders": "9.30.0",
     "ws": "^8.22.0"
   },
   "devDependencies": {
+    "@babylonjs/core": "9.30.0",
+    "@babylonjs/loaders": "9.30.0",
+    "@gltf-transform/core": "^4.5.1",
+    "@gltf-transform/extensions": "^4.5.1",
+    "@gltf-transform/functions": "^4.5.1",
     "@types/node": "^22.20.5",
     "@types/ws": "^8.18.2",
+    "esbuild": "^0.28.2",
+    "meshoptimizer": "^1.3.0",
+    "sharp": "^0.35.5",
     "tsx": "^4.23.15",
     "typescript": "~5.9.3",
     "vite": "~6.4.4"
