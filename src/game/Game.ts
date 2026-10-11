@@ -11,6 +11,7 @@ import { MultiplayerSession } from "./multiplayer/MultiplayerSession";
 import { NetClient } from "./multiplayer/NetClient";
 import { BarcelonaMap } from "./world/BarcelonaMap";
 import { setupLighting, type LightingRig } from "./world/Lighting";
+import { loadHelicopters, type HeliSet } from "./world/Helicopters";
 import { runCollisionSelfTest } from "./debug/selfTest";
 import { runCombatTest } from "./debug/combatTest";
 import { dumpWorld } from "./debug/dumpWorld";
@@ -28,6 +29,7 @@ export class Game {
   private lighting!: LightingRig;
   private combat!: CombatSystem;
   private session: MultiplayerSession | null = null;
+  private helis: HeliSet | null = null;
   private readonly audio = new AudioManager();
   private readonly hud = new Hud();
   private started = false;
@@ -64,6 +66,10 @@ export class Game {
     this.combat = new CombatSystem(this.scene, this.map, this.player, this.input, this.audio, this.hud, this.lighting);
     await this.combat.init();
     this.combat.setBasilicaProxy();
+
+    // Helicópteros decorativos que sobrevuelan la ciudad
+    this.menu.setProgress("Preparando los helicópteros…", 0.97);
+    this.helis = await loadHelicopters(this.scene, this.lighting, this.settings.current.helicopters);
 
     // Perfil gráfico y asfalto mojado (aplican opciones reales de renderizado)
     this.applyGraphics();
@@ -119,6 +125,13 @@ export class Game {
     const active = this.input.locked;
     this.player.update(dt);
     this.combat.update(dt, active);
+    if (this.helis) {
+      const cam = this.player.camera;
+      this.helis.update(dt, cam.position);
+      const near = this.helis.nearest(cam.position, cam.getDirection(Vector3.Right()));
+      // el sonido solo suena con el juego activo; baja con la distancia (se oye hasta ~450 m)
+      this.audio.setHeli(active && near ? Math.pow(Math.max(0, 1 - near.dist / 450), 1.6) : 0, near?.pan ?? 0);
+    }
     if (this.session) {
       this.session.update(dt);
       // marcador con Tab
@@ -196,6 +209,7 @@ export class Game {
     this.lighting.applyProfile(p);
     this.map.setWet(this.settings.wet);
     this.lighting.setWet(this.settings.wet);
+    this.helis?.setCount(p.helicopters);
     this.lighting.env.setPhotoSky(this.settings.skyPhoto, this.settings.profile === "high" ? "high" : "medium");
     // filtrado anisotrópico en todas las texturas de la escena
     for (const t of this.scene.textures) t.anisotropicFilteringLevel = Math.min(p.anisotropy, this.engine.getCaps().maxAnisotropy || 4);
@@ -230,6 +244,7 @@ export class Game {
       game: this,
       combat: this.combat,
       session: () => this.session,
+      helis: () => this.helis,
       hud: this.hud,
       stats: () => ({ ...this.map.stats, fps: this.engine.getFps(), drawCalls: this.instrumentation.drawCallsCounter.current, frameMs: this.instrumentation.frameTimeCounter.average }),
       tp: (x: number, z: number, yawDeg = 0, y = 0.05) => this.player.teleport(x, y, z, (yawDeg * Math.PI) / 180),

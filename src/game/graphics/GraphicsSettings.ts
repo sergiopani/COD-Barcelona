@@ -33,6 +33,8 @@ export interface GraphicsProfile {
   drawDistance: number;
   /** Reflejos en espacio de pantalla (solo se activan con asfalto mojado). */
   ssr: boolean;
+  /** Helicópteros que sobrevuelan la ciudad. */
+  helicopters: number;
 }
 
 export const PROFILES: Record<ProfileName, GraphicsProfile> = {
@@ -50,6 +52,7 @@ export const PROFILES: Record<ProfileName, GraphicsProfile> = {
     anisotropy: 4,
     drawDistance: 500,
     ssr: false,
+    helicopters: 2,
   },
   medium: {
     label: "Medio",
@@ -65,6 +68,7 @@ export const PROFILES: Record<ProfileName, GraphicsProfile> = {
     anisotropy: 8,
     drawDistance: 700,
     ssr: false,
+    helicopters: 3,
   },
   high: {
     label: "Alto",
@@ -80,6 +84,7 @@ export const PROFILES: Record<ProfileName, GraphicsProfile> = {
     anisotropy: 16,
     drawDistance: 900,
     ssr: true,
+    helicopters: 4,
   },
 };
 

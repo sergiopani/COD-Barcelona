@@ -561,6 +561,24 @@ for (const run of streetRuns) {
     }
   }
 }
+{
+  const wanted = /* @__PURE__ */ new Map([["side0", [0.3, 0.72]], ["side1", [0.3, 0.72]], ["side2", [0.3, 0.72]], ["side3", [0.3, 0.72]]]);
+  for (const chain of outerChains) {
+    for (const frac of wanted.get(chain.id) ?? []) {
+      const seg = chain.segs.filter((s) => s.kind === "straight").sort((a, b) => b.len - a.len)[0];
+      if (!seg) continue;
+      for (let k = 0; k < 40; k++) {
+        const t = seg.len * frac + k * 0.8;
+        if (t > seg.len - 4) break;
+        const x = seg.a.x + seg.ux * t + seg.nx * 1.7, z = seg.a.z + seg.uz * t + seg.nz * 1.7;
+        if (nearCrosswalk(x, z, 3)) continue;
+        if (props.some((p) => Math.hypot(p.x - x, p.z - z) < 2.4)) continue;
+        addProp("mailbox", x, z, seg.ux, seg.uz, true, 0);
+        break;
+      }
+    }
+  }
+}
 var spawns = [
   { x: S + 1.5, z: -28, yaw: -Math.PI / 2 },
   // calle este, mirando a la basílica

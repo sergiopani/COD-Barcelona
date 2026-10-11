@@ -116,6 +116,12 @@ El panorama aportado (`assets-src/panorama/sf_0.jpeg`, foto esférica de Barcelo
 - **Cielo con foto real** (casilla «Cielo con foto real» del menú, activada por defecto), recoloreado a **día despejado** (azul con nubes blancas; el original era nublado): cúpula con nubes, la silueta de Barcelona, el Tibidabo, la torre Glòries y el mar. La basílica de la foto se ha retirado con un parche de ciudad/cielo
   vecinos, y bajo el horizonte se funde con la niebla. Sigue calculándose la iluminación con el cielo procedural. Calidad 4096 px (Bajo/Medio) o 6000 px (Alto). Limitación: con el zoom de 8× del francotirador la foto se ve blanda (≈ 117 px para 7°).
 
+## Helicópteros de policía
+
+Hasta 4 helicópteros (2 en Bajo, 3 en Medio, 4 en Alto; `helicopters` en `GraphicsSettings.ts`) sobrevuelan la ciudad a 90-150 m de altura (`src/game/world/Helicopters.ts`, modelo `police-helicopter.glb`, 13 k triángulos).
+Siguen elipses y un ocho en función del reloj de pared (`Date.now`), así que en multijugador todos los clientes los ven casi en el mismo sitio sin tráfico de red. Rotor girando, alabeo en las curvas, sombra sobre las calles
+en el perfil Alto y un sonido sintético de rotor que sube al acercarse (se oye hasta ~450 m). Son decorativos: no tienen colisión ni se pueden derribar.
+
 ## Buzones de Correos
 
 8 buzones (escaneo real, `scripts/bake-letterbox.mjs`) repartidos por las aceras de la calle que rodea la basílica (`mapLayout.ts`, `Mailbox.ts`): geometría de 2 cajas con el atlas horneado (graffitis y pegatinas incluidos) y collider de cobertura (0,5 × 1,27 × 0,5 m).

@@ -10,6 +10,53 @@ export class AudioManager {
   private reverbSend!: GainNode;
   private noiseBuf!: AudioBuffer;
   volume = 0.7;
+  private heli: { gain: GainNode; pan: StereoPannerNode } | null = null;
+
+  /**
+   * Rotor de helicóptero lejano: ruido filtrado modulado en amplitud a ~13 Hz («tac-tac-tac») + un grave.
+   * `level` 0..1 (según la distancia) y `pan` -1..1.
+   */
+  setHeli(level: number, pan: number): void {
+    const ctx = this.ctx;
+    if (!ctx) return;
+    if (!this.heli) {
+      const src = ctx.createBufferSource();
+      src.buffer = this.noiseBuf;
+      src.loop = true;
+      const bp = ctx.createBiquadFilter();
+      bp.type = "bandpass";
+      bp.frequency.value = 260;
+      bp.Q.value = 0.9;
+      const am = ctx.createGain();
+      am.gain.value = 0.5;
+      const lfo = ctx.createOscillator();
+      lfo.frequency.value = 13;
+      const lfoDepth = ctx.createGain();
+      lfoDepth.gain.value = 0.5;
+      lfo.connect(lfoDepth).connect(am.gain);
+      const low = ctx.createOscillator();
+      low.type = "sawtooth";
+      low.frequency.value = 52;
+      const lowG = ctx.createGain();
+      lowG.gain.value = 0.18;
+      const lp = ctx.createBiquadFilter();
+      lp.type = "lowpass";
+      lp.frequency.value = 180;
+      const gain = ctx.createGain();
+      gain.gain.value = 0;
+      const panner = ctx.createStereoPanner();
+      src.connect(bp).connect(am).connect(gain);
+      low.connect(lp).connect(lowG).connect(am);
+      gain.connect(panner).connect(this.master);
+      src.start();
+      lfo.start();
+      low.start();
+      this.heli = { gain, pan: panner };
+    }
+    const t = ctx.currentTime;
+    this.heli.gain.gain.setTargetAtTime(Math.max(0, Math.min(1, level)) * 0.5, t, 0.2);
+    this.heli.pan.pan.setTargetAtTime(Math.max(-1, Math.min(1, pan)), t, 0.2);
+  }
 
   /** Debe llamarse desde un manejador de evento de usuario. */
   resume(): void {

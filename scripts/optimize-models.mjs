@@ -15,6 +15,7 @@ const JOBS = {
   sagrada: { file: "buildings/sagrada-familia.glb", ratio: 0.38, error: 0.002, tex: 2048, texBase: 4096, quality: 88, sharpen: true },
   // Alternativa (no se usa por defecto): maqueta de MiniWorld3D convertida con scripts/stl-to-glb.mjs. Escribe en otro archivo.
   sagradaMiniworld: { src: "buildings/sagrada-familia-miniworld-src.glb", file: "buildings/sagrada-familia-miniworld.glb", optional: true, ratio: 1, error: 0, tex: 1024, quality: 88 },
+  heli: { file: "props/police-helicopter.glb", ratio: 1, error: 0, tex: 1024, quality: 86 },
   rifle: { file: "weapons/m1a-springfield.glb", ratio: 0.2, error: 0.0008, tex: 2048, quality: 88 },
   cars: { file: "props/car-pack.glb", ratio: 1, error: 0, tex: 1024, quality: 85 },
   palm: { file: "props/palm-tree.glb", ratio: 1, error: 0, tex: 1024, quality: 88 },
