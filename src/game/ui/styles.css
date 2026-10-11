@@ -132,3 +132,15 @@ kbd {
 #mp-board li span { display: inline-block; min-width: 150px; }
 #mp-board li b { color: #ffd9a0; }
 #mp-board p { margin: 6px 0 0; font-size: 11px; opacity: 0.6; }
+
+/* Fondo del menú: panorama 360° real de la Sagrada Família que se desplaza despacio (equirectangular: el bucle es continuo) */
+#menu-bg {
+  position: absolute; inset: 0; z-index: -1;
+  background: #0d0f14 repeat-x 0 50% / auto 100%; /* la imagen se asigna desde MenuScreen (respeta la base de despliegue) */
+  animation: menu-pan 420s linear infinite;
+  filter: saturate(1.1) brightness(0.95);
+}
+#menu-bg::after { content: ""; position: absolute; inset: 0; background: radial-gradient(ellipse at center, rgba(8,10,16,0.42), rgba(4,5,9,0.78)); }
+@keyframes menu-pan { to { background-position-x: -428.5vh; } }
+#menu.paused #menu-bg { display: none; }
+@media (prefers-reduced-motion: reduce) { #menu-bg { animation: none; } }

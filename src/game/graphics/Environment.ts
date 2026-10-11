@@ -6,8 +6,12 @@ import {
   Effect,
   HDRCubeTexture,
   Constants,
+  Color3,
   Mesh,
   MeshBuilder,
+  StandardMaterial,
+  Texture,
+  VertexData,
   RawCubeTexture,
   Scene,
   ShaderMaterial,
@@ -25,6 +29,8 @@ import {
  */
 export interface EnvironmentRig {
   sky: Mesh;
+  /** Cielo con foto real (panorama 360° de Barcelona sin la basílica). Sustituye al cielo procedural cuando está activo. */
+  setPhotoSky(on: boolean, quality: "medium" | "high"): void;
   ready: Promise<{ source: "externo-env" | "externo-hdr" | "procedural-prefiltrado" | "procedural-sin-prefiltrar" }>;
   setIntensity(v: number): void;
   dispose(): void;
@@ -272,8 +278,75 @@ export function createEnvironment(scene: Scene, toSun: Vector3, intensity = 1): 
     return { source };
   })();
 
+  // ---- Cielo con foto real: cúpula (desde -12° bajo el horizonte hasta el cénit) hija del cielo procedural,
+  //      que sigue calculando la iluminación; solo se oculta su esfera visible.
+  let photo: { mesh: Mesh; quality: "medium" | "high" } | null = null;
+  let photoLoading = false;
+  const buildPhotoSky = async (quality: "medium" | "high"): Promise<void> => {
+    if (photoLoading) return;
+    photoLoading = true;
+    try {
+      const meta = (await (await fetch(ASSETS.skyPhoto.meta)).json()) as { bandRows: number; horizonRow: number; belowDeg: number };
+      const R = 700, SEG = 128, rings: number[] = [];
+      // anillos de elevación: más densos cerca del horizonte
+      for (let i = 0; i <= 24; i++) rings.push(-meta.belowDeg + (i / 24) * (meta.belowDeg + 8));
+      for (let i = 1; i <= 24; i++) rings.push(8 + (i / 24) * 82);
+      const rowOf = (e: number): number => (e >= 0 ? meta.horizonRow * (1 - e / 90) : meta.horizonRow + (-e / meta.belowDeg) * (meta.bandRows - meta.horizonRow));
+      const pos: number[] = [], uv: number[] = [], idx: number[] = [];
+      for (let r = 0; r < rings.length; r++) {
+        const e = (rings[r] * Math.PI) / 180, v = 1 - rowOf(rings[r]) / meta.bandRows;
+        for (let s = 0; s <= SEG; s++) {
+          const a = (s / SEG) * Math.PI * 2;
+          pos.push(R * Math.cos(e) * Math.sin(a), R * Math.sin(e), R * Math.cos(e) * Math.cos(a));
+          uv.push(s / SEG, v);
+        }
+      }
+      for (let r = 0; r < rings.length - 1; r++) for (let s = 0; s < SEG; s++) { const a = r * (SEG + 1) + s, b = a + 1, c = a + SEG + 1, d = c + 1; idx.push(a, c, b, b, c, d); }
+      const mesh = new Mesh("skyPhoto", scene);
+      const vd = new VertexData();
+      vd.positions = pos; vd.uvs = uv; vd.indices = idx;
+      vd.applyToMesh(mesh);
+      const tex = new Texture(quality === "high" ? ASSETS.skyPhoto.high : ASSETS.skyPhoto.medium, scene, false, true, Texture.TRILINEAR_SAMPLINGMODE);
+      tex.wrapU = Texture.WRAP_ADDRESSMODE;
+      tex.wrapV = Texture.CLAMP_ADDRESSMODE;
+      tex.anisotropicFilteringLevel = 4;
+      const m = new StandardMaterial("skyPhotoMat", scene);
+      m.disableLighting = true;
+      m.emissiveTexture = tex;
+      m.emissiveColor = new Color3(0.13, 0.13, 0.13); // la canalización HDR del juego expone mucho más que una foto LDR: sin atenuar se quema
+      m.diffuseColor = Color3.Black();
+      m.specularColor = Color3.Black();
+      m.backFaceCulling = false;
+      m.fogEnabled = false;
+      mesh.material = m;
+      mesh.parent = sky;
+      // orientación: la torre Glòries y el mar de la foto quedan al sureste (+X, -Z) y el Tibidabo al noroeste, como en la realidad
+      mesh.rotation.y = (-85 * Math.PI) / 180;
+      mesh.isPickable = false;
+      mesh.applyFog = false;
+      mesh.alwaysSelectAsActiveMesh = true;
+      photo?.mesh.dispose(false, true);
+      photo = { mesh, quality };
+    } catch (e) {
+      console.warn("[Cielo] No se pudo cargar el cielo con foto; se usa el procedural.", e);
+      photo = null;
+    } finally {
+      photoLoading = false;
+    }
+  };
+  const applyPhotoVisibility = (on: boolean): void => {
+    sky.isVisible = !(on && photo);
+    if (photo) photo.mesh.isVisible = on;
+  };
+  let wantPhoto = false;
+
   return {
     sky,
+    setPhotoSky: (on, quality) => {
+      wantPhoto = on;
+      if (on && (!photo || photo.quality !== quality)) void buildPhotoSky(quality).then(() => applyPhotoVisibility(wantPhoto));
+      applyPhotoVisibility(on);
+    },
     ready,
     setIntensity: (v) => {
       scene.environmentIntensity = v;

@@ -13,5 +13,6 @@ export const ASSETS = {
   rifleGlb: assetUrl("assets/weapons/m1a-springfield.glb"),
   sagradaFamiliaConfig: assetUrl("assets/buildings/sagrada-familia.config.json"),
   envEnv: assetUrl("assets/env/environment.env"),
+  skyPhoto: { medium: assetUrl("assets/env/sky-photo-medium.webp"), high: assetUrl("assets/env/sky-photo-high.webp"), meta: assetUrl("assets/env/sky-photo.json") },
   envHdr: assetUrl("assets/env/environment.hdr"),
 } as const;

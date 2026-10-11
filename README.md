@@ -109,6 +109,13 @@ Como el modelo original tiene 1,9 M de triángulos, `npm run bake:batllo` lo hor
 por casa (`src/game/world/BatlloFacade.ts`) donde los balcones sobresalen de verdad. Sin los archivos `casa-batllo-*` esas 4 casas usan la fachada procedural. Limitación: es una elevación frontal
 (de lado se ve como una lámina con relieve) y las sombras proyectadas no incluyen el relieve.
 
+## Panorama 360° (menú y cielo)
+
+El panorama aportado (`assets-src/panorama/sf_0.jpeg`, foto esférica de Barcelona hecha con dron sobre la Sagrada Família, 6000×3000) se procesa con `npm run prepare:panorama`:
+- **Fondo del menú:** franja con la basílica y el horizonte que se desplaza despacio (bucle continuo de 360°); en pausa se ve la escena.
+- **Cielo con foto real** (casilla «Cielo con foto real» del menú, activada por defecto): cúpula con nubes, la silueta de Barcelona, el Tibidabo, la torre Glòries y el mar. La basílica de la foto se ha retirado con un parche de ciudad/cielo
+  vecinos, y bajo el horizonte se funde con la niebla. Sigue calculándose la iluminación con el cielo procedural. Calidad 4096 px (Bajo/Medio) o 6000 px (Alto). Limitación: con el zoom de 8× del francotirador la foto se ve blanda (≈ 117 px para 7°).
+
 ## Créditos de datos
 
 Ver `CREDITOS.md`.

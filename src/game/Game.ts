@@ -67,8 +67,8 @@ export class Game {
 
     // Perfil gráfico y asfalto mojado (aplican opciones reales de renderizado)
     this.applyGraphics();
-    this.menu.bindGraphics(this.settings.profile, this.settings.wet, (profile, wet) => {
-      this.settings.set(profile as ProfileName, wet);
+    this.menu.bindGraphics(this.settings.profile, this.settings.wet, this.settings.skyPhoto, (profile, wet, skyPhoto) => {
+      this.settings.set(profile as ProfileName, wet, true, skyPhoto);
       this.applyGraphics();
     });
 
@@ -196,6 +196,7 @@ export class Game {
     this.lighting.applyProfile(p);
     this.map.setWet(this.settings.wet);
     this.lighting.setWet(this.settings.wet);
+    this.lighting.env.setPhotoSky(this.settings.skyPhoto, this.settings.profile === "high" ? "high" : "medium");
     // filtrado anisotrópico en todas las texturas de la escena
     for (const t of this.scene.textures) t.anisotropicFilteringLevel = Math.min(p.anisotropy, this.engine.getCaps().maxAnisotropy || 4);
     this.menu.setQualityValue(this.settings.profile);

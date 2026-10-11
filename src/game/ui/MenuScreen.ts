@@ -1,3 +1,5 @@
+import { assetUrl } from "../assets";
+
 /** Pantalla inicial y de pausa (DOM). El botón «Jugar» es la interacción explícita que activa Pointer Lock. */
 export class MenuScreen {
   private readonly root = document.getElementById("menu") as HTMLElement;
@@ -9,6 +11,7 @@ export class MenuScreen {
   private readonly fps = document.getElementById("fps") as HTMLElement;
   private readonly quality = document.getElementById("quality") as HTMLSelectElement;
   private readonly wet = document.getElementById("wet") as HTMLInputElement;
+  private readonly skyPhoto = document.getElementById("sky-photo") as HTMLInputElement;
   private readonly mpFields = document.getElementById("mp-fields") as HTMLElement;
   private readonly mpName = document.getElementById("mp-name") as HTMLInputElement;
   private readonly mpBoard = document.getElementById("mp-board") as HTMLElement;
@@ -20,6 +23,8 @@ export class MenuScreen {
   private onPlay: () => void = () => {};
 
   constructor() {
+    const bg = document.getElementById("menu-bg");
+    if (bg) bg.style.backgroundImage = `url("${assetUrl("assets/env/menu-panorama.webp")}")`;
     this.button.addEventListener("click", () => this.onPlay());
     for (const r of document.querySelectorAll<HTMLInputElement>('input[name="mode"]')) {
       r.addEventListener("change", () => {
@@ -93,12 +98,14 @@ export class MenuScreen {
   }
 
   /** Enlaza los controles gráficos con el estado real (cada cambio se aplica al instante). */
-  bindGraphics(profile: string, wet: boolean, onChange: (profile: string, wet: boolean) => void): void {
+  bindGraphics(profile: string, wet: boolean, skyPhoto: boolean, onChange: (profile: string, wet: boolean, skyPhoto: boolean) => void): void {
     this.quality.value = profile;
     this.wet.checked = wet;
-    const fire = () => onChange(this.quality.value, this.wet.checked);
+    this.skyPhoto.checked = skyPhoto;
+    const fire = () => onChange(this.quality.value, this.wet.checked, this.skyPhoto.checked);
     this.quality.addEventListener("change", fire);
     this.wet.addEventListener("change", fire);
+    this.skyPhoto.addEventListener("change", fire);
   }
 
   setQualityValue(profile: string): void {
@@ -122,6 +129,7 @@ export class MenuScreen {
   }
 
   showPause(): void {
+    this.root.classList.add("paused"); // en pausa se ve la escena detrás, no el panorama del menú
     this.button.textContent = "Continuar";
     this.status.textContent = "Pausa";
     this.root.hidden = false;

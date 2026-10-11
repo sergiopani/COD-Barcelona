@@ -71,3 +71,7 @@ Equipo de prueba: Apple M1 Pro, navegador integrado de la app, 1024×768. Tiempo
 - **Vegetación:** las palmeras no tienen LOD ni viento.
 - **Cielo:** las nubes del cielo visible se animan; el IBL (generado una vez) no.
 - El tiempo hasta «Jugar» aumenta ~1–2 s por la generación y el prefiltrado del IBL.
+
+## Cielo con foto real y fondo del menú
+
+`src/game/graphics/Environment.ts` (`setPhotoSky`) añade una cúpula (de −13° bajo el horizonte al cénit) con el panorama de Barcelona como hija del cielo procedural; este sigue calculando la iluminación/IBL y solo se oculta su esfera visible. Material sin iluminación con `emissiveColor = 0,13` (la canalización HDR con exposición 1,2 y ACES quemaba la foto LDR). Orientación: la torre Glòries/mar al sureste. Se desactiva desde el menú («Cielo con foto real»).

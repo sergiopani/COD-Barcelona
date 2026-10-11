@@ -88,12 +88,15 @@ const KEY = "barcelonaFps.graphics.v1";
 export interface SavedSettings {
   profile: ProfileName;
   wet: boolean;
+  skyPhoto?: boolean;
 }
 
 /** Estado de ajustes gráficos del usuario. localStorage puede fallar (modo privado): siempre con try/catch. */
 export class GraphicsSettings {
   profile: ProfileName = "medium";
   wet = false;
+  /** Cielo con foto real (panorama de Barcelona) en lugar del procedural. */
+  skyPhoto = true;
   private listeners: (() => void)[] = [];
 
   constructor() {
@@ -103,6 +106,7 @@ export class GraphicsSettings {
         const s = JSON.parse(raw) as Partial<SavedSettings>;
         if (s.profile && s.profile in PROFILES) this.profile = s.profile;
         if (typeof s.wet === "boolean") this.wet = s.wet;
+        if (typeof s.skyPhoto === "boolean") this.skyPhoto = s.skyPhoto;
       }
     } catch {
       /* sin persistencia */
@@ -113,12 +117,13 @@ export class GraphicsSettings {
     return PROFILES[this.profile];
   }
 
-  set(profile: ProfileName, wet = this.wet, persist = true): void {
+  set(profile: ProfileName, wet = this.wet, persist = true, skyPhoto = this.skyPhoto): void {
     this.profile = profile;
     this.wet = wet;
+    this.skyPhoto = skyPhoto;
     if (persist) {
       try {
-        localStorage.setItem(KEY, JSON.stringify({ profile, wet } satisfies SavedSettings));
+        localStorage.setItem(KEY, JSON.stringify({ profile, wet, skyPhoto } satisfies SavedSettings));
       } catch {
         /* ignorar */
       }
