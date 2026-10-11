@@ -1,5 +1,5 @@
 import { Matrix, Mesh, Ray, Vector3 } from "@babylonjs/core";
-import { ARM_END, STREET_AXIS } from "../config";
+import { isRoad as isRoadShared } from "../../../shared/world";
 import type { CollisionManager } from "../world/CollisionManager";
 
 /**
@@ -231,15 +231,8 @@ export class Ballistics {
     return !hit || hit.distance >= len - 0.3;
   }
 
-  /** Aproximación de calzada vs acera para el suelo (calzada de 11 m en cada calle y cruces). */
+  /** Calzada vs acera (compartido con el servidor). */
   static isRoad(x: number, z: number): boolean {
-    const ax = Math.abs(x);
-    const az = Math.abs(z);
-    const dx = Math.abs(ax - STREET_AXIS);
-    const dz = Math.abs(az - STREET_AXIS);
-    if (ax > ARM_END || az > ARM_END) return false;
-    if (dx < 5.5 && az < ARM_END) return true;
-    if (dz < 5.5 && ax < ARM_END) return true;
-    return dx < 24 && dz < 24 && dx + dz < 36;
+    return isRoadShared(x, z);
   }
 }

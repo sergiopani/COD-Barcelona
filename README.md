@@ -3,8 +3,8 @@
 Shooter en primera persona para navegador (TypeScript + Babylon.js + Vite), ambientado **solo** en la manzana de la
 Sagrada Família y su entorno inmediato (Eixample, Barcelona).
 
-**Estado: FASE 2 completada (modo individual con francotirador)** — escenario 3D recorrible, arma con mira telescópica, salud, bots-objetivo,
-marcador y audio. Multijugador y publicación son las fases 3–5 (no implementadas todavía). Ver `docs/COMBATE.md`.
+**Estado: FASE 3 completada (multijugador online)** — individual con bots y multijugador de hasta 8 jugadores con servidor autoritativo (Node + WebSockets).
+Ver `docs/COMBATE.md` y `docs/MULTIJUGADOR.md`. Faltan las fases 4–5 (más mejora visual y publicación/despliegue).
 
 ## Requisitos
 
@@ -15,7 +15,8 @@ marcador y audio. Multijugador y publicación son las fases 3–5 (no implementa
 
 ```bash
 npm install
-npm run dev        # http://localhost:5173
+npm run dev        # solo cliente: http://localhost:5173 (modo individual)
+npm run dev:all    # cliente + servidor multijugador (ws://localhost:8080)
 ```
 
 Pulsa **Jugar** (el cursor solo se bloquea tras ese clic). **Esc** libera el cursor y abre la pausa.
@@ -33,6 +34,8 @@ Combate: **clic izq.** disparar · **clic der.** (mantener) apuntar · **rueda**
 En el menú inicial/pausa: **Calidad gráfica** (Bajo/Medio/Alto) y **Asfalto mojado**; ver `docs/GRAFICOS.md`.
 
 Gráficos: `docs/GRAFICOS.md` (perfiles, medidas, texturas recomendadas). HDR opcional: `public/assets/env/README.txt`.
+
+Multijugador: `docs/MULTIJUGADOR.md`. Tests: `npm test` (servidor + interpolación; arranca el servidor de prueba solo).
 
 Otros comandos: `npm run build` (typecheck + build de producción en `dist/`), `npm run preview`, `npm run typecheck`.
 
@@ -57,6 +60,8 @@ src/game/world/BarcelonaMap.ts    orquesta la construcción del mapa
 src/game/world/StreetGenerator.ts calzada, aceras, bordillos, cebras, marcas viales
 src/game/world/BuildingGenerator.ts + FacadeModules.ts   edificios modulares del Eixample
 src/game/world/VehicleSet.ts      coches aparcados desde public/assets/props/car-pack.glb (thin instances)
+src/game/multiplayer/             cliente de red, interpolación de jugadores remotos y sesión (ver docs/MULTIJUGADOR.md)
+server/ · shared/                 servidor autoritativo (Node) y código compartido (protocolo, reglas de combate, colisión)
 src/game/weapons/ · combat/ · audio/   sistema de combate (ver docs/COMBATE.md)
 src/game/world/StreetFurniture.ts farolas, bancos, semáforos, señales, coches, motos
 src/game/world/PalmTrees.ts       palmeras desde public/assets/props/palm-tree.glb (thin instances)

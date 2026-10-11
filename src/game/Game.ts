@@ -7,10 +7,13 @@ import { AudioManager } from "./audio/AudioManager";
 import { CombatSystem } from "./combat/CombatSystem";
 import { Hud } from "./ui/Hud";
 import { MenuScreen } from "./ui/MenuScreen";
+import { MultiplayerSession } from "./multiplayer/MultiplayerSession";
+import { NetClient } from "./multiplayer/NetClient";
 import { BarcelonaMap } from "./world/BarcelonaMap";
 import { setupLighting, type LightingRig } from "./world/Lighting";
 import { runCollisionSelfTest } from "./debug/selfTest";
 import { runCombatTest } from "./debug/combatTest";
+import { dumpWorld } from "./debug/dumpWorld";
 
 /**
  * Motor, escena, bucle principal y estados (cargando → menú → jugando → pausa).
@@ -24,6 +27,7 @@ export class Game {
   private map!: BarcelonaMap;
   private lighting!: LightingRig;
   private combat!: CombatSystem;
+  private session: MultiplayerSession | null = null;
   private readonly audio = new AudioManager();
   private readonly hud = new Hud();
   private started = false;
@@ -75,16 +79,24 @@ export class Game {
     // Estado de Pointer Lock ↔ menú
     this.input.onLockChange = (locked) => {
       if (locked) this.menu.hide();
-      else if (this.started) this.menu.showPause();
+      else if (this.started) {
+        this.menu.showPause();
+        if (this.session) this.menu.setNote("En multijugador la partida NO se pausa: el servidor sigue en marcha.");
+      }
     };
     this.input.onLockError = () => this.menu.setNote("El navegador rechazó el bloqueo del ratón. Vuelve a pulsar el botón.");
 
+    this.menu.setUrlPlaceholder(NetClient.defaultUrl());
     this.scene.executeWhenReady(() => {
       this.menu.ready(() => {
-        this.started = true;
         this.audio.resume(); // el AudioContext solo puede arrancar tras un gesto del usuario
         this.menu.setNote("");
-        void this.input.requestLock();
+        void this.input.requestLock(); // dentro del manejador del clic (gesto del usuario)
+        if (this.menu.mode === "mp") void this.startMultiplayer();
+        else {
+          this.started = true;
+          this.menu.lockMode();
+        }
       });
       if (this.map.sagrada.usedPlaceholder) {
         this.menu.setNote("Modelo sagrada-familia.glb no encontrado: se usa una basílica provisional.");
@@ -101,6 +113,11 @@ export class Game {
     const active = this.input.locked;
     this.player.update(dt);
     this.combat.update(dt, active);
+    if (this.session) {
+      this.session.update(dt);
+      // marcador con Tab
+      this.hud.setScoreboard(active && this.input.isDown("Tab"), this.session.scoreboardRows(), this.session.myId, this.session.room, this.session.killLimit);
+    }
     this.combat.refreshHud();
     // caída fuera del mundo → reaparición
     if (this.player.position.y < PLAYER.killPlaneY) {
@@ -116,7 +133,38 @@ export class Game {
       const fps = this.engine.getFps();
       this.menu.setFps(`FPS ${fps.toFixed(0)} · ${this.instrumentation.frameTimeCounter.average.toFixed(1)} ms · ${this.instrumentation.drawCallsCounter.current} draws`);
       this.autoQuality(fps, 0.5);
+      if (this.session) this.hud.setNetInfo(this.session.ping);
     }
+  }
+
+  /** Conecta con el servidor y entra en una sala. La orden de bloqueo del ratón ya se pidió en el clic. */
+  private async startMultiplayer(): Promise<void> {
+    const cfg = this.menu.mpSettings;
+    const url = cfg.url || NetClient.defaultUrl();
+    this.hud.setBanner("Conectando con el servidor…");
+    const session = new MultiplayerSession(this.scene, this.lighting, this.player, this.combat, this.hud, this.audio, this.combat.effects);
+    try {
+      await session.start(url, cfg.name || "Jugador", cfg.room || undefined);
+    } catch (e) {
+      this.hud.setBanner(null);
+      session.stop();
+      this.input.exitLock();
+      this.menu.showPause();
+      this.menu.setPlayLabel("Reintentar");
+      this.menu.setNote(`${e instanceof Error ? e.message : e}. ¿Está el servidor en marcha? (npm run server)`);
+      return;
+    }
+    session.onDisconnect = (reason) => {
+      this.input.exitLock();
+      this.session = null;
+      this.menu.showError(reason, "Recargar");
+    };
+    this.session = session;
+    this.combat.enterMultiplayer(session);
+    this.started = true;
+    this.menu.lockMode();
+    this.hud.setBanner(null);
+    console.info(`[Red] Conectado a ${url} · sala ${session.room} · jugador #${session.myId}`);
   }
 
   /** Aplica el perfil actual: resolución interna, sombras, postproceso, SSAO, filtrado, distancia y asfalto mojado. */
@@ -159,10 +207,12 @@ export class Game {
       lighting: this.lighting,
       game: this,
       combat: this.combat,
+      session: () => this.session,
       hud: this.hud,
       stats: () => ({ ...this.map.stats, fps: this.engine.getFps(), drawCalls: this.instrumentation.drawCallsCounter.current, frameMs: this.instrumentation.frameTimeCounter.average }),
       tp: (x: number, z: number, yawDeg = 0, y = 0.05) => this.player.teleport(x, y, z, (yawDeg * Math.PI) / 180),
       selfTest: () => runCollisionSelfTest(this.scene, this.player, this.map),
+      dumpWorld: () => dumpWorld(this.scene, this.map),
       combatTest: () =>
         runCombatTest(
           this.combat,

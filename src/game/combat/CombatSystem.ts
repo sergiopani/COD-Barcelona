@@ -8,6 +8,7 @@ import { Effects } from "../weapons/Effects";
 import { Viewmodel } from "../weapons/Viewmodel";
 import { M1A_SNIPER, type WeaponDefinition } from "../weapons/WeaponDefinition";
 import { WeaponController } from "../weapons/WeaponController";
+import type { MultiplayerSession } from "../multiplayer/MultiplayerSession";
 import type { BarcelonaMap } from "../world/BarcelonaMap";
 import type { LightingRig } from "../world/Lighting";
 import type { Bot } from "./Bot";
@@ -30,6 +31,8 @@ export class CombatSystem {
   shots = 0;
   hits = 0;
   private respawnTimer = 0;
+  /** Sesión multijugador (null = modo individual con bots). */
+  mp: MultiplayerSession | null = null;
   private sinceDamage = 99;
   readonly ballistics: Ballistics;
   readonly effects: Effects;
@@ -55,8 +58,10 @@ export class CombatSystem {
     this.weapon = new WeaponController(def, player, input, this.ballistics, this.effects, audio, this.viewmodel, {
       onShot: () => {
         this.shots++;
-        this.bots.noise(player.position);
+        if (!this.mp) this.bots.noise(player.position);
       },
+      onFire: (origin, forward, ads) => this.mp?.sendFire(origin, forward, ads),
+      onReload: () => this.mp?.sendReload(),
       onActorHit: (actor, dmg, zone) => this.hitBot(actor as Bot, dmg, zone),
     });
   }
@@ -88,6 +93,51 @@ export class CombatSystem {
       this.audio.hitMarker(kind);
     }
     return killed;
+  }
+
+  /** Entra en modo multijugador: sin bots, el servidor decide salud, munición y bajas. */
+  enterMultiplayer(session: MultiplayerSession): void {
+    this.mp = session;
+    this.bots.setEnabled(false);
+    this.kills = this.deaths = this.headshots = this.shots = this.hits = 0;
+    this.health = 100;
+    this.alive = true;
+    this.weapon.reset();
+  }
+
+  // ---- eventos del servidor (multijugador)
+  applyServerState(you: { hp: number; ammo: number; reserve: number; reloading: boolean }): void {
+    if (this.alive) this.health = you.hp;
+    this.weapon.applyServerState(you);
+  }
+  mpHitConfirmed(zone: "head" | "torso" | "legs", killed: boolean): void {
+    this.hits++;
+    if (killed && zone === "head") this.headshots++;
+    const kind = killed ? "kill" : zone === "head" ? "head" : "body";
+    this.hud.hitMarker(kind);
+    this.audio.hitMarker(kind);
+  }
+  mpDamaged(from: Vector3): void {
+    this.sinceDamage = 0;
+    this.hud.damageFrom(Math.atan2(from.x - this.player.position.x, from.z - this.player.position.z) - this.player.yaw);
+    this.audio.hurt();
+  }
+  mpDeath(respawnIn: number): void {
+    this.alive = false;
+    this.health = 0;
+    this.respawnTimer = respawnIn;
+    this.player.setDead(true);
+    this.audio.death();
+    this.hud.showDeath(respawnIn);
+  }
+  mpRespawn(p: [number, number, number], yaw: number): void {
+    this.player.teleport(p[0], p[1], p[2], yaw);
+    this.player.setDead(false);
+    this.alive = true;
+    this.health = 100;
+    this.weapon.reset();
+    this.audio.respawn();
+    this.hud.hideDeath();
   }
 
   /** Daño recibido por el jugador (de bots). */
@@ -138,6 +188,15 @@ export class CombatSystem {
     this.effects.update(dt);
     if (!active) {
       this.weapon.update(dt, false);
+      return;
+    }
+    if (this.mp) {
+      // multijugador: salud/muerte/bots los gobierna el servidor
+      if (!this.alive) {
+        this.respawnTimer = Math.max(0, this.respawnTimer - dt);
+        this.hud.showDeath(this.respawnTimer);
+      }
+      this.weapon.update(dt, this.alive);
       return;
     }
     if (!this.alive) {

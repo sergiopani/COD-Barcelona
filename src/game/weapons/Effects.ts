@@ -165,6 +165,14 @@ export class Effects {
     d.setEnabled(true);
   }
 
+  /** Polvo en un punto (impactos de disparos remotos, sin normal conocida). */
+  dustAt(point: Vector3): void {
+    this.dust.emitter = point.clone();
+    this.dust.direction1 = new Vector3(-0.7, 1, -0.7);
+    this.dust.direction2 = new Vector3(0.7, 2.5, 0.7);
+    this.dust.manualEmitCount = 8;
+  }
+
   /** Sangre/impacto sobre un actor: chispas rojizas. */
   actorImpact(point: Vector3, dir: Vector3): void {
     this.dust.emitter = point.clone();

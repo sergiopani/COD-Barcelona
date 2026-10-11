@@ -12,6 +12,9 @@ export interface WeaponEvents {
   /** Daño a un actor: devuelve true si lo mató. */
   onActorHit(actor: Shootable, damage: number, zone: HitZone): boolean;
   onWorldHit?(distance: number): void;
+  /** Multijugador: intención de disparo (origen del ojo y dirección SIN dispersión). */
+  onFire?(origin: Vector3, forward: Vector3, ads: number): void;
+  onReload?(): void;
 }
 
 /**
@@ -168,6 +171,17 @@ export class WeaponController {
     this.reloading = true;
     this.reloadTimer = this.def.reloadTime;
     this.audio.reload(this.def.reloadTime);
+    this.events.onReload?.();
+  }
+
+  /** Multijugador: el servidor es la autoridad de munición y recarga. */
+  applyServerState(s: { ammo: number; reserve: number; reloading: boolean }): void {
+    this.reserve = s.reserve;
+    if (!this.reloading) this.ammo = s.ammo;
+    else if (!s.reloading && this.reloadTimer < 0.6) {
+      this.ammo = s.ammo;
+      this.reloading = false;
+    }
   }
 
   private tryFire(): void {
@@ -202,6 +216,7 @@ export class WeaponController {
     this.viewmodel.kick(1);
     this.player.addRecoil(this.def.recoilPitch * (this.ads > 0.5 ? 1.25 : 1), (Math.random() - 0.5) * 2 * this.def.recoilYaw);
     this.events.onShot();
+    this.events.onFire?.(origin, forward, this.ads);
 
     const muzzle = this.ads > 0.5 ? origin.add(forward.scale(0.9)).add(up.scale(-0.12)).add(right.scale(0.12)) : this.viewmodel.getMuzzleWorld();
     this.effects.muzzleFlash(muzzle.add(forward.scale(0.2)));

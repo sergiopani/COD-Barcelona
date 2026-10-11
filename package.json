@@ -3,18 +3,28 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Barcelona FPS — shooter en primera persona en la manzana de la Sagrada Familia (Babylon.js)",
+  "description": "Barcelona FPS \u2014 shooter en primera persona en la manzana de la Sagrada Familia (Babylon.js)",
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && vite build",
+    "build": "tsc --noEmit && tsc --noEmit -p server/tsconfig.json && vite build",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit && tsc --noEmit -p server/tsconfig.json",
+    "server": "tsx server/src/index.ts",
+    "server:dev": "tsx watch server/src/index.ts",
+    "test:server": "tsx server/test/integration.ts",
+    "test:interp": "tsx server/test/interp.ts",
+    "dev:all": "node scripts/dev-all.mjs",
+    "test": "npm run test:interp && npm run test:server"
   },
   "dependencies": {
     "@babylonjs/core": "9.30.0",
-    "@babylonjs/loaders": "9.30.0"
+    "@babylonjs/loaders": "9.30.0",
+    "ws": "^8.22.0"
   },
   "devDependencies": {
+    "@types/node": "^22.20.5",
+    "@types/ws": "^8.18.2",
+    "tsx": "^4.23.15",
     "typescript": "~5.9.3",
     "vite": "~6.4.4"
   }

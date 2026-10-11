@@ -52,6 +52,19 @@ export class BotManager {
     return best.clone();
   }
 
+  private enabled = true;
+
+  /** Activa/desactiva los bots (en multijugador no hay bots): se ocultan, no actualizan y no reciben balas. */
+  setEnabled(on: boolean): void {
+    this.enabled = on;
+    for (const b of this.bots) {
+      b.setVisible(on && b.alive);
+      b.body.checkCollisions = on && b.alive;
+    }
+    this.ballistics.actors.length = 0;
+    if (on) for (const b of this.bots) this.ballistics.actors.push(b);
+  }
+
   /** Bots vivos. */
   get alive(): number {
     return this.bots.filter((b) => b.alive).length;
@@ -63,6 +76,7 @@ export class BotManager {
   }
 
   update(dt: number, ctx: Omit<BotContext, "waypoints">, playerPos: Vector3): void {
+    if (!this.enabled) return;
     this.time += dt;
     const full: BotContext = { ...ctx, waypoints: this.waypoints };
     for (const b of this.bots) {

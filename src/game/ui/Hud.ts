@@ -41,6 +41,12 @@ export class Hud {
   private readonly stDeaths = $("st-deaths");
   private readonly stAcc = $("st-acc");
   private readonly stHs = $("st-hs");
+  private readonly scoreboard = $("scoreboard");
+  private readonly sbBody = $("sb-body");
+  private readonly sbRoom = $("sb-room");
+  private readonly sbLimit = $("sb-limit");
+  private readonly banner = $("net-banner");
+  private readonly fpsBox = $("fps");
   private lastShownScope = false;
 
   update(s: HudState): void {
@@ -93,6 +99,39 @@ export class Hud {
     this.feedBox.prepend(d);
     while (this.feedBox.children.length > 5) this.feedBox.lastElementChild?.remove();
     window.setTimeout(() => d.remove(), 4600);
+  }
+
+  /** Marcador (mantener Tab en multijugador). */
+  setScoreboard(visible: boolean, rows: { id: number; name: string; kills: number; deaths: number; alive: boolean }[], myId: number, room: string, killLimit: number): void {
+    this.scoreboard.hidden = !visible;
+    if (!visible) return;
+    this.sbRoom.textContent = `sala ${room}`;
+    this.sbLimit.textContent = `Primero en ${killLimit} bajas gana`;
+    const sorted = [...rows].sort((a, b) => b.kills - a.kills || a.deaths - b.deaths);
+    this.sbBody.replaceChildren(
+      ...sorted.map((r) => {
+        const tr = document.createElement("tr");
+        if (r.id === myId) tr.className = "me";
+        if (!r.alive) tr.className += " dead";
+        for (const v of [r.name, String(r.kills), String(r.deaths)]) {
+          const td = document.createElement("td");
+          td.textContent = v;
+          tr.appendChild(td);
+        }
+        return tr;
+      }),
+    );
+  }
+
+  /** Mensaje central (conectando, fin de partida…). null lo oculta. */
+  setBanner(text: string | null): void {
+    this.banner.hidden = text === null;
+    if (text !== null) this.banner.textContent = text;
+  }
+
+  setNetInfo(pingMs: number | null): void {
+    const base = this.fpsBox.textContent?.split(" · ping")[0] ?? "";
+    this.fpsBox.textContent = pingMs === null ? base : `${base} · ping ${Math.round(pingMs)} ms`;
   }
 
   showDeath(seconds: number): void {

@@ -101,3 +101,25 @@ kbd {
 #death { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; background: rgba(60,0,0,0.5); color: #fff; }
 #death h2 { margin: 0; font-size: 56px; letter-spacing: 0.3em; }
 #death p { margin: 6px 0 0; font-size: 16px; opacity: 0.9; }
+
+/* ---- Multijugador ---- */
+.modes { display: flex; gap: 18px; justify-content: center; margin: 0 0 12px; font-size: 13px; }
+.modes label { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
+.modes input { accent-color: var(--accent); }
+#mp-fields { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin: 0 0 14px; }
+#mp-fields[hidden] { display: none; }
+#mp-fields input { font: inherit; font-size: 13px; color: var(--ink); background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.3); border-radius: 4px; padding: 6px 9px; width: 140px; }
+#mp-fields #mp-url { width: 296px; }
+#mp-fields input::placeholder { color: rgba(246,239,228,0.5); }
+#scoreboard { position: absolute; left: 50%; top: 18%; transform: translateX(-50%); min-width: 340px; padding: 14px 20px; background: rgba(8,10,14,0.82); border: 1px solid rgba(255,255,255,0.2); color: var(--ink); font: 13px ui-monospace, Menlo, monospace; }
+#scoreboard[hidden], #net-banner[hidden] { display: none; }
+#scoreboard h3 { margin: 0 0 8px; font: 700 15px "Helvetica Neue", Arial, sans-serif; letter-spacing: 0.15em; text-transform: uppercase; }
+#scoreboard h3 small { opacity: 0.6; font-weight: 400; margin-left: 8px; letter-spacing: 0; }
+#scoreboard table { width: 100%; border-collapse: collapse; }
+#scoreboard th { text-align: left; opacity: 0.6; font-weight: 400; padding: 2px 6px; }
+#scoreboard td { padding: 3px 6px; }
+#scoreboard td:nth-child(n+2), #scoreboard th:nth-child(n+2) { text-align: right; }
+#scoreboard tr.me td { color: #ffd9a0; font-weight: 700; }
+#scoreboard tr.dead td:first-child { opacity: 0.5; text-decoration: line-through; }
+#sb-limit { margin: 8px 0 0; opacity: 0.6; }
+#net-banner { position: absolute; left: 50%; top: 34%; transform: translateX(-50%); padding: 10px 18px; background: rgba(0,0,0,0.7); color: #ffd9a0; font: 700 15px "Helvetica Neue", Arial, sans-serif; letter-spacing: 0.1em; border-radius: 4px; }

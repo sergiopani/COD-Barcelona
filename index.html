@@ -54,6 +54,8 @@
       <div id="ammo"><span id="ammo-mag">5</span><small> / <span id="ammo-res">30</span></small><div id="weapon-name">M1A Francotirador</div></div>
       <div id="health"><div id="health-bar"><i></i></div><span id="health-num">100</span></div>
       <div id="reload-tip" hidden>RECARGANDO…</div>
+      <div id="scoreboard" hidden><h3>Marcador <small id="sb-room"></small></h3><table><thead><tr><th>Jugador</th><th>Bajas</th><th>Muertes</th></tr></thead><tbody id="sb-body"></tbody></table><p id="sb-limit"></p></div>
+      <div id="net-banner" hidden></div>
       <div id="death" hidden><h2>ELIMINADO</h2><p>Reapareces en <b id="death-t">3</b> s</p></div>
     </div>
 
@@ -61,6 +63,15 @@
       <div class="panel">
         <h1>BARCELONA <span>FPS</span></h1>
         <p class="tagline">Sagrada Família · Eixample, Barcelona</p>
+        <div class="modes">
+          <label><input type="radio" name="mode" value="sp" checked /> Un jugador (bots)</label>
+          <label><input type="radio" name="mode" value="mp" /> Multijugador online</label>
+        </div>
+        <div id="mp-fields" hidden>
+          <input id="mp-name" type="text" maxlength="16" placeholder="Tu nombre" autocomplete="off" />
+          <input id="mp-room" type="text" maxlength="12" placeholder="Código de sala (opcional)" autocomplete="off" />
+          <input id="mp-url" type="text" placeholder="Servidor (ws://…)" autocomplete="off" spellcheck="false" />
+        </div>
         <button id="play" disabled>Cargando…</button>
         <p id="status" class="status">Iniciando motor…</p>
         <div class="bar"><div id="bar-fill"></div></div>
