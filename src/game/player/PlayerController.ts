@@ -23,6 +23,8 @@ export class PlayerController {
   /** Red de seguridad anti-atravesado (se asigna cuando el mapa está construido). */
   safety: CollisionManager | null = null;
   readonly velocity = new Vector3();
+  /** 1 + bonus por bajas (usuarios guardados); multiplica la altura de salto. */
+  jumpMultiplier = 1;
   grounded = false;
   speed = 0;
   private bobTime = 0;
@@ -124,7 +126,8 @@ export class PlayerController {
     if (this.grounded) {
       this.velocity.y = 0;
       if (input.jump) {
-        this.velocity.y = PLAYER.jumpSpeed;
+        // la altura de salto sube con las bajas de los usuarios guardados: v = v0·√(1 + bonus) ⇒ altura ×(1 + bonus)
+        this.velocity.y = PLAYER.jumpSpeed * Math.sqrt(this.jumpMultiplier);
         this.grounded = false;
       }
     }

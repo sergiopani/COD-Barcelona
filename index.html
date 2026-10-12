@@ -11,7 +11,7 @@
 
     <div id="hud" hidden>
       <div id="fps">FPS --</div>
-      <div id="stats"><span id="st-kills">0</span> bajas · <span id="st-deaths">0</span> muertes · <span id="st-acc">--</span> precisión · <span id="st-hs">0</span> cabezas</div>
+      <div id="stats"><span id="st-kills">0</span> bajas · <span id="st-deaths">0</span> muertes · <span id="st-acc">--</span> precisión · <span id="st-hs">0</span> cabezas<br /><span id="st-global" hidden></span></div>
       <div id="killfeed"></div>
       <div id="crosshair"></div>
       <div id="hitmarker"><i></i><i></i><i></i><i></i></div>
@@ -64,15 +64,20 @@
       <div class="panel">
         <h1>BARCELONA <span>FPS</span></h1>
         <p class="tagline">Sagrada Família · Eixample, Barcelona</p>
-        <div class="modes">
-          <label><input type="radio" name="mode" value="sp" checked /> Un jugador (bots)</label>
-          <label><input type="radio" name="mode" value="mp" /> Multijugador online</label>
-        </div>
-        <div id="mp-fields" hidden>
-          <input id="mp-name" type="text" maxlength="16" placeholder="Tu nombre" autocomplete="off" />
+        <div id="mp-fields">
+          <div id="auth-box">
+            <div id="auth-google"></div>
+            <div id="auth-user" hidden><img id="auth-pic" alt="" referrerpolicy="no-referrer" /><span id="auth-name"></span><button type="button" id="auth-out">Cerrar sesión</button></div>
+            <p id="auth-note"></p>
+            <div id="guest-box">
+              <div class="or"><span>o entra como invitado</span></div>
+              <input id="mp-name" type="text" maxlength="16" placeholder="Tu nickname" autocomplete="off" />
+            </div>
+            <p class="privacy">Con Google guardamos tu nombre, correo y foto de perfil y tus bajas (ranking global y bonus de salto). Como invitado no se guarda nada y no entras en el ranking.</p>
+          </div>
           <input id="mp-url" type="text" placeholder="Servidor (ws://…)" autocomplete="off" spellcheck="false" />
         </div>
-        <div id="mp-board" hidden>
+        <div id="mp-board">
           <h2>Ranking global de bajas</h2>
           <ol id="mp-board-list"></ol>
           <p id="mp-board-note"></p>

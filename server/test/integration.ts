@@ -1,3 +1,5 @@
+import crypto from "node:crypto";
+import http from "node:http";
 import { spawn, type ChildProcess } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
@@ -12,7 +14,26 @@ import { PROTOCOL_VERSION, type ClientMsg, type ServerMsg, type Vec3 } from "../
 const PORT = 8181;
 const URL = `ws://127.0.0.1:${PORT}`;
 const DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), "bfps-test-"));
-const TOKEN = (n: string) => `token-${n}`.padEnd(24, "x"); // tokens válidos (16-64 caracteres)
+const TOKEN = (n: string) => n; // identificador de la cuenta de Google de pruebas (`connect` firma el token)
+
+// ---- «Google» de pruebas: par de claves RSA propio + servidor JWKS local; el servidor verifica las firmas de verdad
+const CLIENT_ID = "test-client.apps.googleusercontent.com";
+const JWKS_PORT = PORT + 1;
+const keyPair = crypto.generateKeyPairSync("rsa", { modulusLength: 2048 });
+const otherKey = crypto.generateKeyPairSync("rsa", { modulusLength: 2048 });
+const b64u = (b: Buffer | string): string => Buffer.from(b).toString("base64url");
+function signGoogle(user: string, name: string, opts: { aud?: string; exp?: number; key?: crypto.KeyObject; iss?: string } = {}): string {
+  const now = Math.floor(Date.now() / 1000);
+  const header = b64u(JSON.stringify({ alg: "RS256", kid: "test-kid", typ: "JWT" }));
+  const payload = b64u(JSON.stringify({ iss: opts.iss ?? "https://accounts.google.com", aud: opts.aud ?? CLIENT_ID, sub: `sub-${user}`, email: `${user}@test.local`, email_verified: true, name, picture: "https://example.com/p.png", iat: now, exp: opts.exp ?? now + 3600 }));
+  const sig = crypto.sign("RSA-SHA256", Buffer.from(`${header}.${payload}`), opts.key ?? keyPair.privateKey);
+  return `${header}.${payload}.${b64u(sig)}`;
+}
+const jwksServer = http.createServer((_req, res) => {
+  const jwk = { ...keyPair.publicKey.export({ format: "jwk" }), kid: "test-kid", alg: "RS256", use: "sig" };
+  res.writeHead(200, { "content-type": "application/json" });
+  res.end(JSON.stringify({ keys: [jwk] }));
+});
 let server: ChildProcess | null = null;
 
 interface Client {
@@ -56,7 +77,7 @@ async function ranking(limit = 50): Promise<{ total: number; top: BoardRowHttp[]
 
 function startServer(): Promise<void> {
   server = spawn("npx", ["tsx", "server/src/index.ts"], {
-    env: { ...process.env, PORT: String(PORT), KILL_LIMIT: "3", ALLOW_DEBUG: "1", MAX_PLAYERS: "8", DATA_DIR },
+    env: { ...process.env, PORT: String(PORT), KILL_LIMIT: "3", ALLOW_DEBUG: "1", MAX_PLAYERS: "8", DATA_DIR, GOOGLE_CLIENT_ID: CLIENT_ID, GOOGLE_CERTS_URL: `http://127.0.0.1:${JWKS_PORT}/certs` },
     stdio: ["ignore", "pipe", "pipe"],
   });
   server.stdout?.on("data", (d) => process.env.VERBOSE && process.stdout.write(`[srv] ${d}`));
@@ -87,7 +108,8 @@ async function stopServer(): Promise<void> {
   }
 }
 
-function connect(name: string, token?: string): Promise<Client> {
+/** `user` = cuenta de Google de pruebas (se firma un token con ese nombre); sin `user` entra como invitado. */
+function connect(name: string, user?: string, rawToken?: string): Promise<Client> {
   return new Promise((resolve, reject) => {
     const ws = new WebSocket(URL);
     const msgs: ServerMsg[] = [];
@@ -137,7 +159,7 @@ function connect(name: string, token?: string): Promise<Client> {
       }
     });
     ws.on("open", () => {
-      c.send({ t: "join", v: PROTOCOL_VERSION, name, token });
+      c.send({ t: "join", v: PROTOCOL_VERSION, name, idToken: rawToken ?? (user ? signGoogle(user, name) : undefined) });
       c.wait("welcome").then(() => resolve(c), () => undefined);
     });
     ws.on("error", reject);
@@ -184,6 +206,7 @@ async function waitAlive(c: Client): Promise<void> {
 }
 
 async function main(): Promise<void> {
+  await new Promise<void>((r) => jwksServer.listen(JWKS_PORT, "127.0.0.1", r));
   await startServer();
 
   // ---- 1) UNA sola sala global con aforo
@@ -212,7 +235,27 @@ async function main(): Promise<void> {
   const named = await connect("  <b>Nombre\u0001Larguísimo-que-supera-el-limite</b>  ", TOKEN("nombre"));
   const nm = named.welcome!.players[0].name;
   check("nombre saneado (sin <>/control y ≤16)", nm.length <= 16 && !/[<>\u0001]/.test(nm), `"${nm}"`);
-  check("sin bajas aún: global=null y ranking vacío", named.welcome!.global === null && (await ranking()).total === 0);
+  check("usuario de Google sin bajas: registrado, rank 0 y ranking vacío", named.welcome!.registered === true && named.welcome!.global?.kills === 0 && named.welcome!.global?.rank === 0 && (await ranking()).total === 0);
+  const guest0 = await connect("Invitado");
+  check("sin sesión: entra como invitado (no registrado, sin ranking)", guest0.welcome!.registered === false && guest0.welcome!.global === null);
+  guest0.close();
+  const cfg = (await (await fetch(`http://127.0.0.1:${PORT}/api/config`)).json()) as { googleClientId: string | null };
+  check("/api/config publica el ID de cliente de Google (no secreto)", cfg.googleClientId === CLIENT_ID);
+  const rejected = async (tok: string): Promise<string> => {
+    const ws = new WebSocket(URL);
+    return new Promise((res) => {
+      ws.on("open", () => ws.send(JSON.stringify({ t: "join", v: PROTOCOL_VERSION, name: "Falso", idToken: tok })));
+      ws.on("message", (d) => { const m = JSON.parse(d.toString()) as ServerMsg; if (m.t === "error") res(m.msg); if (m.t === "welcome") res("ADMITIDO"); });
+      setTimeout(() => res("TIMEOUT"), 4000);
+    }).finally(() => ws.close()) as Promise<string>;
+  };
+  check("token firmado con OTRA clave → rechazado", (await rejected(signGoogle("x", "X", { key: otherKey.privateKey }))).includes("no válida"));
+  check("token de OTRA aplicación (aud) → rechazado", (await rejected(signGoogle("x", "X", { aud: "otra-app.apps.googleusercontent.com" }))).includes("no válida"));
+  check("token caducado → rechazado", (await rejected(signGoogle("x", "X", { exp: Math.floor(Date.now() / 1000) - 600 }))).includes("no válida"));
+  check("emisor falso → rechazado", (await rejected(signGoogle("x", "X", { iss: "https://evil.example" }))).includes("no válida"));
+  check("basura en lugar de token → rechazado", (await rejected("esto.no.es-un-jwt")).includes("no válida"));
+  await sleep(400);
+  check("ninguno de los rechazados llegó a entrar", (await health()).players === 1); // solo queda `named`
   named.close();
   await sleep(200);
 
@@ -257,7 +300,7 @@ async function main(): Promise<void> {
   check("el tirador entra en el ranking global (#1, 1 baja, 1 cabeza)", board1.you!.rank === 1 && board1.you!.headshots === 1 && board1.top[0][1] === "Tirador", JSON.stringify(board1.you));
   const rk1 = await ranking();
   check("GET /api/leaderboard lista al tirador y NO a quien no tiene bajas", rk1.total === 1 && rk1.top[0].name === "Tirador" && rk1.top[0].kills === 1 && !rk1.top.some((r) => r.name === "Objetivo"), JSON.stringify(rk1.top));
-  check("el ranking público no expone tokens", !rk1.raw.includes("token-") && !rk1.raw.includes(TOKEN("tirador")));
+  check("el ranking público no expone correos, identificadores ni tokens", !rk1.raw.includes("@") && !rk1.raw.includes("sub-") && !rk1.raw.includes("eyJ"));
   check("el ranking se guarda en disco", fs.existsSync(path.join(DATA_DIR, "leaderboard.json")) || true);
 
   // ---- 6) cadencia y munición
@@ -351,7 +394,7 @@ async function main(): Promise<void> {
   const A2 = await connect("Tirador-bis", TOKEN("tirador")); // misma identidad que A
   await waitAlive(B);
   await place(B, [66.5, 0.05, 30]); // B se aparta (detrás del objetivo) para que A2 solo pueda alcanzar a A
-  const killsBefore = (await ranking()).top.find((r) => r.name === "Tirador")!.kills;
+  const killsBefore = (await ranking()).top.find((r) => r.name === "Tirador" || r.name === "Tirador-bis")!.kills; // la misma cuenta cambia de nombre al entrar con otro nick
   await killWith(A2, A, false);
   await sleep(1200);
   const killsAfter = (await ranking()).top.find((r) => r.name === "Tirador" || r.name === "Tirador-bis")!.kills;
@@ -359,12 +402,12 @@ async function main(): Promise<void> {
   A2.close();
 
   // ---- 15) jugadores sin token válido juegan pero no entran en el ranking
-  const anon = await connect("Anonimo", "corto");
+  const anon = await connect("Anonimo"); // invitado: sin sesión de Google
   await waitAlive(B);
   const totalBefore = (await ranking()).total;
   await killWith(anon, B, false);
   await sleep(1200);
-  check("sin token válido: puede jugar, pero sus bajas no se guardan", (await ranking()).total === totalBefore && anon.welcome!.global === null);
+  check("invitado: puede jugar, pero sus bajas no se guardan ni puntúa", (await ranking()).total === totalBefore && anon.welcome!.registered === false && anon.welcome!.global === null);
   anon.close();
 
   // ---- 16) persistencia: el ranking sobrevive al reinicio del servidor
@@ -374,8 +417,11 @@ async function main(): Promise<void> {
   await sleep(300);
   await stopServer();
   const file = path.join(DATA_DIR, "leaderboard.json");
-  check("el servidor guarda el ranking al apagarse (SIGTERM)", fs.existsSync(file) && JSON.parse(fs.readFileSync(file, "utf8")).entries.length === 2);
-  check("el archivo guarda un hash del token, nunca el token", !fs.readFileSync(file, "utf8").includes("token-"));
+  check("el servidor guarda usuarios y ranking al apagarse (SIGTERM)", fs.existsSync(file) && (JSON.parse(fs.readFileSync(file, "utf8")) as { entries: { id: string; kills: number }[] }).entries.filter((e) => e.kills > 0).length === 2);
+  const saved = fs.readFileSync(file, "utf8");
+  const parsedFile = JSON.parse(saved) as { version: number; entries: { id: string; email: string; name: string; kills: number }[] };
+  check("el archivo guarda los datos del usuario (sub, nombre, correo) y NO el token", parsedFile.version === 2 && parsedFile.entries.some((e) => e.id === "sub-tirador" && e.email === "tirador@test.local") && !saved.includes("eyJ"));
+  check("los invitados no se guardan (solo cuentas de Google)", !parsedFile.entries.some((e) => e.name === "Anonimo" || e.name === "Invitado"));
   await startServer();
   const afterRestart = (await ranking()).top.map((r) => `${r.name}:${r.kills}:${r.deaths}:${r.headshots}`);
   check("tras reiniciar el servidor el ranking es idéntico", JSON.stringify(beforeRestart) === JSON.stringify(afterRestart), afterRestart.join(" | "));
@@ -412,6 +458,7 @@ main()
     console.log(`\n${results.length - failed} correctas, ${failed} fallidas`);
     await stopServer();
     server?.kill();
+    jwksServer.close();
     fs.rmSync(DATA_DIR, { recursive: true, force: true });
     process.exit(failed ? 1 : 0);
   });

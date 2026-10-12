@@ -1,20 +1,26 @@
-import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
+import type { GoogleProfile } from "./GoogleAuth";
 
 /**
- * Ranking GLOBAL de bajas, persistente en un archivo JSON (escritura atómica). Cada jugador se identifica con un token
- * anónimo generado por su navegador; el servidor solo guarda un hash del token (nunca se envía a otros jugadores).
- * Una entrada se crea con la primera baja; las muertes y cabezas se acumulan desde entonces.
+ * Usuarios guardados + ranking GLOBAL de bajas, persistentes en un archivo JSON (escritura atómica).
+ * Solo se guardan los usuarios que inician sesión con Google (id = identificador de cuenta `sub`): nombre, correo y foto de perfil
+ * de Google, fechas y sus estadísticas. Los invitados (solo nickname) no se guardan ni puntúan.
+ * El ranking lista a los usuarios guardados con al menos una baja; el correo y la foto NUNCA salen del servidor.
  */
 export interface LeaderboardEntry {
+  /** `sub` de Google. */
   id: string;
   name: string;
+  email: string;
+  picture: string;
   kills: number;
   deaths: number;
   headshots: number;
+  /** Primer inicio de sesión / último movimiento (ms desde 1970). */
   first: number;
   last: number;
+  logins: number;
 }
 
 export interface BoardRow {
@@ -26,7 +32,7 @@ export interface BoardRow {
 }
 
 const MAX_ENTRIES = 10000;
-const TOKEN_RE = /^[A-Za-z0-9_-]{16,64}$/;
+const FILE_VERSION = 2;
 
 export class Leaderboard {
   private readonly entries = new Map<string, LeaderboardEntry>();
@@ -40,17 +46,12 @@ export class Leaderboard {
     if (file) this.load();
   }
 
-  /** Hash estable del token (null si el token no es válido → ese jugador no se persiste). */
-  static idFromToken(token: unknown): string | null {
-    if (typeof token !== "string" || !TOKEN_RE.test(token)) return null;
-    return crypto.createHash("sha256").update(token).digest("hex").slice(0, 24);
-  }
-
   private load(): void {
     const f = this.file!;
     try {
       if (!fs.existsSync(f)) return;
-      const data = JSON.parse(fs.readFileSync(f, "utf8")) as { entries?: LeaderboardEntry[] };
+      const data = JSON.parse(fs.readFileSync(f, "utf8")) as { version?: number; entries?: LeaderboardEntry[] };
+      if (data.version !== FILE_VERSION) throw new Error(`versión de archivo ${data.version} (se esperaba ${FILE_VERSION}): ranking anónimo antiguo`);
       for (const e of data.entries ?? []) {
         if (e && typeof e.id === "string" && Number.isFinite(e.kills)) this.entries.set(e.id, e);
       }
@@ -65,7 +66,13 @@ export class Leaderboard {
     }
   }
 
+  /** Usuarios con al menos una baja (los que aparecen en el ranking). */
   get size(): number {
+    return this.order().length;
+  }
+
+  /** Usuarios guardados (con sesión de Google), tengan bajas o no. */
+  get users(): number {
     return this.entries.size;
   }
 
@@ -75,23 +82,38 @@ export class Leaderboard {
     this.scheduleSave();
   }
 
-  recordKill(id: string | null, name: string, headshot: boolean): void {
-    if (!id) return;
+  /** Alta o actualización del usuario al iniciar sesión (nombre, correo, foto). Devuelve su ficha. */
+  upsertUser(p: GoogleProfile): LeaderboardEntry {
     const now = Date.now();
-    let e = this.entries.get(id);
+    let e = this.entries.get(p.sub);
     if (!e) {
-      e = { id, name, kills: 0, deaths: 0, headshots: 0, first: now, last: now };
-      this.entries.set(id, e);
+      if (this.entries.size >= MAX_ENTRIES) this.prune();
+      e = { id: p.sub, name: p.name, email: p.email, picture: p.picture, kills: 0, deaths: 0, headshots: 0, first: now, last: now, logins: 0 };
+      this.entries.set(p.sub, e);
     }
-    e.name = name;
+    const nameChanged = e.name !== p.name;
+    e.name = p.name;
+    e.email = p.email;
+    e.picture = p.picture;
+    e.last = now;
+    e.logins++;
+    this.sorted = null;
+    if (nameChanged && e.kills > 0) this.version++; // el nombre aparece en el ranking
+    this.scheduleSave();
+    return e;
+  }
+
+  /** Suma una baja a un usuario guardado (los invitados no puntúan). */
+  recordKill(id: string | null, headshot: boolean): void {
+    const e = id ? this.entries.get(id) : undefined;
+    if (!e) return;
     e.kills++;
     if (headshot) e.headshots++;
-    e.last = now;
-    if (this.entries.size > MAX_ENTRIES) this.prune();
+    e.last = Date.now();
     this.touchChange();
   }
 
-  /** Las muertes solo cuentan para quien ya figura en el ranking. */
+  /** Las muertes se acumulan solo para usuarios guardados. */
   recordDeath(id: string | null): void {
     const e = id ? this.entries.get(id) : undefined;
     if (!e) return;
@@ -100,7 +122,7 @@ export class Leaderboard {
   }
 
   private order(): LeaderboardEntry[] {
-    if (!this.sorted) this.sorted = [...this.entries.values()].sort((a, b) => b.kills - a.kills || a.deaths - b.deaths || a.first - b.first);
+    if (!this.sorted) this.sorted = [...this.entries.values()].filter((e) => e.kills > 0).sort((a, b) => b.kills - a.kills || a.deaths - b.deaths || a.first - b.first);
     return this.sorted;
   }
 
@@ -110,17 +132,19 @@ export class Leaderboard {
       .map((e, i) => ({ rank: i + 1, name: e.name, kills: e.kills, deaths: e.deaths, headshots: e.headshots }));
   }
 
-  /** Posición y cifras de un jugador (null si aún no tiene bajas). */
+  /** Cifras de un usuario guardado (null si es invitado). `rank` es 0 mientras no tenga bajas. */
   entry(id: string | null): (BoardRow & { total: number }) | null {
-    if (!id || !this.entries.has(id)) return null;
+    const e = id ? this.entries.get(id) : undefined;
+    if (!e) return null;
     const list = this.order();
-    const i = list.findIndex((e) => e.id === id);
-    const e = list[i];
+    const i = e.kills > 0 ? list.findIndex((x) => x.id === e.id) : -1;
     return { rank: i + 1, name: e.name, kills: e.kills, deaths: e.deaths, headshots: e.headshots, total: list.length };
   }
 
   private prune(): void {
-    for (const e of this.order().slice(MAX_ENTRIES)) this.entries.delete(e.id);
+    // se descartan los usuarios con menos bajas (y, a igualdad, los más antiguos sin actividad)
+    const all = [...this.entries.values()].sort((a, b) => b.kills - a.kills || b.last - a.last);
+    for (const e of all.slice(MAX_ENTRIES - 100)) this.entries.delete(e.id);
     this.sorted = null;
   }
 
@@ -142,7 +166,7 @@ export class Leaderboard {
     try {
       fs.mkdirSync(path.dirname(this.file), { recursive: true });
       const tmp = `${this.file}.tmp`;
-      fs.writeFileSync(tmp, JSON.stringify({ version: 1, entries: this.order() }));
+      fs.writeFileSync(tmp, JSON.stringify({ version: FILE_VERSION, entries: [...this.entries.values()] }));
       fs.renameSync(tmp, this.file);
     } catch (err) {
       console.error("[Ranking] No se pudo guardar:", err);

@@ -1,4 +1,5 @@
 import { assetUrl } from "../assets";
+import { getAuth, onAuthChange, setupGoogleButton, signOut } from "../multiplayer/auth";
 
 /** Pantalla inicial y de pausa (DOM). El botón «Jugar» es la interacción explícita que activa Pointer Lock. */
 export class MenuScreen {
@@ -12,13 +13,9 @@ export class MenuScreen {
   private readonly quality = document.getElementById("quality") as HTMLSelectElement;
   private readonly wet = document.getElementById("wet") as HTMLInputElement;
   private readonly skyPhoto = document.getElementById("sky-photo") as HTMLInputElement;
-  private readonly mpFields = document.getElementById("mp-fields") as HTMLElement;
   private readonly mpName = document.getElementById("mp-name") as HTMLInputElement;
-  private readonly mpBoard = document.getElementById("mp-board") as HTMLElement;
   private readonly mpBoardList = document.getElementById("mp-board-list") as HTMLElement;
   private readonly mpBoardNote = document.getElementById("mp-board-note") as HTMLElement;
-  /** Se invoca al cambiar de modo (para cargar el ranking global al elegir multijugador). */
-  onModeChange: (mode: "sp" | "mp") => void = () => {};
   private readonly mpUrl = document.getElementById("mp-url") as HTMLInputElement;
   private onPlay: () => void = () => {};
 
@@ -26,13 +23,8 @@ export class MenuScreen {
     const bg = document.getElementById("menu-bg");
     if (bg) bg.style.backgroundImage = `url("${assetUrl("assets/env/menu-panorama.webp")}")`;
     this.button.addEventListener("click", () => this.onPlay());
-    for (const r of document.querySelectorAll<HTMLInputElement>('input[name="mode"]')) {
-      r.addEventListener("change", () => {
-        this.mpFields.hidden = this.mode !== "mp";
-        this.mpBoard.hidden = this.mode !== "mp";
-        this.onModeChange(this.mode);
-      });
-    }
+    document.getElementById("auth-out")?.addEventListener("click", () => signOut());
+    onAuthChange(() => this.refreshAuth());
     try {
       this.mpName.value = localStorage.getItem("barcelonaFps.name") ?? "";
       this.mpUrl.value = localStorage.getItem("barcelonaFps.url") ?? "";
@@ -41,13 +33,43 @@ export class MenuScreen {
     }
   }
 
-  get mode(): "sp" | "mp" {
-    return (document.querySelector('input[name="mode"]:checked') as HTMLInputElement | null)?.value === "mp" ? "mp" : "sp";
+  /** Muestra el usuario de Google (o el botón / el nickname de invitado). */
+  private refreshAuth(): void {
+    const u = getAuth();
+    (document.getElementById("auth-google") as HTMLElement).hidden = !!u || !this.googleReady;
+    (document.getElementById("auth-user") as HTMLElement).hidden = !u;
+    (document.getElementById("guest-box") as HTMLElement).hidden = !!u;
+    if (u) {
+      (document.getElementById("auth-name") as HTMLElement).textContent = u.name;
+      const pic = document.getElementById("auth-pic") as HTMLImageElement;
+      pic.src = u.picture;
+      pic.hidden = !u.picture;
+    }
+  }
+
+  private googleReady = false;
+  /** Configura el inicio de sesión con Google con el ID de cliente que publica el servidor (null = no configurado). */
+  async setupAuth(googleClientId: string | null): Promise<void> {
+    const note = document.getElementById("auth-note") as HTMLElement;
+    if (googleClientId) {
+      this.googleReady = await setupGoogleButton(googleClientId, document.getElementById("auth-google") as HTMLElement);
+      note.textContent = this.googleReady ? "" : "No se pudo cargar el inicio de sesión de Google; puedes jugar como invitado.";
+    } else {
+      note.textContent = "Inicio de sesión con Google no disponible en este servidor: entra como invitado.";
+    }
+    this.refreshAuth();
+  }
+
+  /** Validación del formulario antes de entrar: sesión de Google o nickname de al menos 2 caracteres. */
+  canPlay(): boolean {
+    const ok = !!getAuth() || this.mpName.value.trim().length >= 2;
+    if (!ok) this.setNote("Inicia sesión con Google o escribe un nickname (mínimo 2 caracteres) para jugar.");
+    return ok;
   }
 
   /** Datos del formulario multijugador (y los recuerda en localStorage). */
-  get mpSettings(): { name: string; url: string } {
-    const v = { name: this.mpName.value.trim(), url: this.mpUrl.value.trim() };
+  get mpSettings(): { name: string; url: string; idToken?: string } {
+    const v = { name: this.mpName.value.trim(), url: this.mpUrl.value.trim(), idToken: getAuth()?.idToken };
     try {
       localStorage.setItem("barcelonaFps.name", v.name);
       localStorage.setItem("barcelonaFps.url", v.url);
@@ -86,7 +108,7 @@ export class MenuScreen {
 
   /** Bloquea el selector de modo (en partida) y muestra un error persistente. */
   lockMode(): void {
-    for (const r of document.querySelectorAll<HTMLInputElement>('input[name="mode"]')) r.disabled = true;
+    // en la partida el menú solo sirve de pausa: no hay selector de modo que bloquear
   }
 
   showError(text: string, reloadLabel = "Volver a empezar"): void {

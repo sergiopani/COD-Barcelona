@@ -18,6 +18,8 @@ por defecto es `0` (sin final). En multijugador la pausa (Esc) NO congela el jue
 
 ## Ranking global de bajas
 
+> **Actualizado:** ahora el ranking, los datos guardados y el bonus de salto dependen del **inicio de sesión con Google** (ver `docs/GOOGLE_LOGIN.md`); los invitados con nickname no puntúan. La sección siguiente describe la versión anterior con token anónimo (obsoleta).
+
 - **Cada baja se guarda**: al matar a otro jugador, el servidor suma una baja (y, si fue a la cabeza, un «headshot») al jugador que la hizo, y una muerte a la víctima si ya figura en el ranking.
   Quien aún no tiene ninguna baja no aparece en el ranking. El ranking ordena por bajas (desempate: menos muertes, y quien llegó antes).
 - **Identidad sin cuentas**: no hay registro ni contraseñas. El navegador genera un **token aleatorio** (se guarda en `localStorage`, clave `barcelonaFps.token`) y lo envía al entrar;

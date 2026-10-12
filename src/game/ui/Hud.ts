@@ -41,6 +41,7 @@ export class Hud {
   private readonly stDeaths = $("st-deaths");
   private readonly stAcc = $("st-acc");
   private readonly stHs = $("st-hs");
+  private readonly stGlobal = $("st-global");
   private readonly scoreboard = $("scoreboard");
   private readonly sbBody = $("sb-body");
   private readonly sbRoom = $("sb-room");
@@ -101,6 +102,12 @@ export class Hud {
     this.feedBox.prepend(d);
     while (this.feedBox.children.length > 5) this.feedBox.lastElementChild?.remove();
     window.setTimeout(() => d.remove(), 4600);
+  }
+
+  /** Estadísticas globales del usuario guardado (null = invitado: se oculta). */
+  setGlobalStats(s: { kills: number; rank: number; jumpBonusPct: number } | null): void {
+    this.stGlobal.hidden = s === null;
+    if (s) this.stGlobal.textContent = `Global: ${s.kills} bajas${s.rank > 0 ? ` · puesto #${s.rank}` : ""} · salto +${s.jumpBonusPct.toFixed(2)} %`;
   }
 
   /** Marcador (mantener Tab en multijugador): jugadores de la sala global + ranking global de bajas. */

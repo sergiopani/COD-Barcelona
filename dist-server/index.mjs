@@ -5,19 +5,89 @@ import path2 from "node:path";
 import { WebSocketServer } from "ws";
 
 // shared/protocol.ts
-var PROTOCOL_VERSION = 2;
+var PROTOCOL_VERSION = 3;
 var MAX_PLAYERS = 32;
 var SERVER_TICK_HZ = 20;
 var KILL_LIMIT = 0;
 var RESPAWN_SECONDS = 3;
 var NAME_MAX = 16;
 
-// server/src/Leaderboard.ts
+// server/src/GoogleAuth.ts
 import crypto from "node:crypto";
+var ISSUERS = /* @__PURE__ */ new Set(["https://accounts.google.com", "accounts.google.com"]);
+var DEFAULT_CERTS = "https://www.googleapis.com/oauth2/v3/certs";
+var GoogleAuth = class {
+  constructor(clientId, certsUrl = process.env.GOOGLE_CERTS_URL || DEFAULT_CERTS) {
+    this.clientId = clientId;
+    this.certsUrl = certsUrl;
+  }
+  clientId;
+  certsUrl;
+  keys = /* @__PURE__ */ new Map();
+  fetchedAt = 0;
+  lastMissRefresh = 0;
+  async refreshKeys() {
+    const res = await fetch(this.certsUrl, { signal: AbortSignal.timeout(5e3) });
+    if (!res.ok) throw new Error(`certificados de Google: HTTP ${res.status}`);
+    const body = await res.json();
+    const next = /* @__PURE__ */ new Map();
+    for (const k of body.keys ?? []) {
+      if (k.kty !== "RSA" || !k.kid) continue;
+      next.set(k.kid, crypto.createPublicKey({ key: k, format: "jwk" }));
+    }
+    if (next.size === 0) throw new Error("certificados de Google vac\xEDos");
+    this.keys = next;
+    this.fetchedAt = Date.now();
+  }
+  async keyFor(kid) {
+    const fresh = Date.now() - this.fetchedAt < 36e5;
+    if (!fresh || this.keys.size === 0) await this.refreshKeys();
+    let key = this.keys.get(kid) ?? null;
+    if (!key && Date.now() - this.lastMissRefresh > 6e4) {
+      this.lastMissRefresh = Date.now();
+      await this.refreshKeys();
+      key = this.keys.get(kid) ?? null;
+    }
+    return key;
+  }
+  /** Devuelve el perfil si el token es válido; lanza un Error con el motivo si no. */
+  async verify(idToken) {
+    if (typeof idToken !== "string" || idToken.length > 4096) throw new Error("token ausente o demasiado largo");
+    const parts = idToken.split(".");
+    if (parts.length !== 3) throw new Error("formato de token no v\xE1lido");
+    const b64 = (s) => Buffer.from(s, "base64url");
+    let header;
+    let claims;
+    try {
+      header = JSON.parse(b64(parts[0]).toString("utf8"));
+      claims = JSON.parse(b64(parts[1]).toString("utf8"));
+    } catch {
+      throw new Error("token ilegible");
+    }
+    if (header.alg !== "RS256" || !header.kid) throw new Error("algoritmo no admitido");
+    const key = await this.keyFor(header.kid);
+    if (!key) throw new Error("clave de firma desconocida");
+    const ok = crypto.verify("RSA-SHA256", Buffer.from(`${parts[0]}.${parts[1]}`), key, b64(parts[2]));
+    if (!ok) throw new Error("firma no v\xE1lida");
+    const now = Math.floor(Date.now() / 1e3);
+    if (typeof claims.iss !== "string" || !ISSUERS.has(claims.iss)) throw new Error("emisor no v\xE1lido");
+    const aud = claims.aud;
+    if (aud !== this.clientId && !(Array.isArray(aud) && aud.includes(this.clientId))) throw new Error("el token es de otra aplicaci\xF3n");
+    if (typeof claims.exp !== "number" || claims.exp < now - 30) throw new Error("token caducado");
+    if (typeof claims.iat === "number" && claims.iat > now + 300) throw new Error("token emitido en el futuro");
+    if (typeof claims.sub !== "string" || !claims.sub || claims.sub.length > 64) throw new Error("sin identificador de cuenta");
+    const email = typeof claims.email === "string" ? claims.email.slice(0, 254) : "";
+    const name = typeof claims.name === "string" && claims.name.trim() ? claims.name : typeof claims.given_name === "string" && claims.given_name ? claims.given_name : email.split("@")[0] || "Jugador";
+    const picture = typeof claims.picture === "string" && /^https:\/\//.test(claims.picture) ? claims.picture.slice(0, 500) : "";
+    return { sub: claims.sub, name, email, picture };
+  }
+};
+
+// server/src/Leaderboard.ts
 import fs from "node:fs";
 import path from "node:path";
 var MAX_ENTRIES = 1e4;
-var TOKEN_RE = /^[A-Za-z0-9_-]{16,64}$/;
+var FILE_VERSION = 2;
 var Leaderboard = class {
   /** `file` null = solo en memoria (pruebas). */
   constructor(file) {
@@ -30,16 +100,12 @@ var Leaderboard = class {
   saveTimer = null;
   /** Se incrementa en cada cambio (para difundir el ranking solo cuando cambia). */
   version = 0;
-  /** Hash estable del token (null si el token no es válido → ese jugador no se persiste). */
-  static idFromToken(token) {
-    if (typeof token !== "string" || !TOKEN_RE.test(token)) return null;
-    return crypto.createHash("sha256").update(token).digest("hex").slice(0, 24);
-  }
   load() {
     const f = this.file;
     try {
       if (!fs.existsSync(f)) return;
       const data = JSON.parse(fs.readFileSync(f, "utf8"));
+      if (data.version !== FILE_VERSION) throw new Error(`versi\xF3n de archivo ${data.version} (se esperaba ${FILE_VERSION}): ranking an\xF3nimo antiguo`);
       for (const e of data.entries ?? []) {
         if (e && typeof e.id === "string" && Number.isFinite(e.kills)) this.entries.set(e.id, e);
       }
@@ -51,7 +117,12 @@ var Leaderboard = class {
       console.error("[Ranking] Archivo corrupto, se ha guardado una copia y se reinicia:", err);
     }
   }
+  /** Usuarios con al menos una baja (los que aparecen en el ranking). */
   get size() {
+    return this.order().length;
+  }
+  /** Usuarios guardados (con sesión de Google), tengan bajas o no. */
+  get users() {
     return this.entries.size;
   }
   touchChange() {
@@ -59,22 +130,36 @@ var Leaderboard = class {
     this.version++;
     this.scheduleSave();
   }
-  recordKill(id, name, headshot) {
-    if (!id) return;
+  /** Alta o actualización del usuario al iniciar sesión (nombre, correo, foto). Devuelve su ficha. */
+  upsertUser(p) {
     const now = Date.now();
-    let e = this.entries.get(id);
+    let e = this.entries.get(p.sub);
     if (!e) {
-      e = { id, name, kills: 0, deaths: 0, headshots: 0, first: now, last: now };
-      this.entries.set(id, e);
+      if (this.entries.size >= MAX_ENTRIES) this.prune();
+      e = { id: p.sub, name: p.name, email: p.email, picture: p.picture, kills: 0, deaths: 0, headshots: 0, first: now, last: now, logins: 0 };
+      this.entries.set(p.sub, e);
     }
-    e.name = name;
+    const nameChanged = e.name !== p.name;
+    e.name = p.name;
+    e.email = p.email;
+    e.picture = p.picture;
+    e.last = now;
+    e.logins++;
+    this.sorted = null;
+    if (nameChanged && e.kills > 0) this.version++;
+    this.scheduleSave();
+    return e;
+  }
+  /** Suma una baja a un usuario guardado (los invitados no puntúan). */
+  recordKill(id, headshot) {
+    const e = id ? this.entries.get(id) : void 0;
+    if (!e) return;
     e.kills++;
     if (headshot) e.headshots++;
-    e.last = now;
-    if (this.entries.size > MAX_ENTRIES) this.prune();
+    e.last = Date.now();
     this.touchChange();
   }
-  /** Las muertes solo cuentan para quien ya figura en el ranking. */
+  /** Las muertes se acumulan solo para usuarios guardados. */
   recordDeath(id) {
     const e = id ? this.entries.get(id) : void 0;
     if (!e) return;
@@ -82,22 +167,23 @@ var Leaderboard = class {
     this.touchChange();
   }
   order() {
-    if (!this.sorted) this.sorted = [...this.entries.values()].sort((a, b) => b.kills - a.kills || a.deaths - b.deaths || a.first - b.first);
+    if (!this.sorted) this.sorted = [...this.entries.values()].filter((e) => e.kills > 0).sort((a, b) => b.kills - a.kills || a.deaths - b.deaths || a.first - b.first);
     return this.sorted;
   }
   top(n) {
     return this.order().slice(0, n).map((e, i) => ({ rank: i + 1, name: e.name, kills: e.kills, deaths: e.deaths, headshots: e.headshots }));
   }
-  /** Posición y cifras de un jugador (null si aún no tiene bajas). */
+  /** Cifras de un usuario guardado (null si es invitado). `rank` es 0 mientras no tenga bajas. */
   entry(id) {
-    if (!id || !this.entries.has(id)) return null;
+    const e = id ? this.entries.get(id) : void 0;
+    if (!e) return null;
     const list = this.order();
-    const i = list.findIndex((e2) => e2.id === id);
-    const e = list[i];
+    const i = e.kills > 0 ? list.findIndex((x) => x.id === e.id) : -1;
     return { rank: i + 1, name: e.name, kills: e.kills, deaths: e.deaths, headshots: e.headshots, total: list.length };
   }
   prune() {
-    for (const e of this.order().slice(MAX_ENTRIES)) this.entries.delete(e.id);
+    const all = [...this.entries.values()].sort((a, b) => b.kills - a.kills || b.last - a.last);
+    for (const e of all.slice(MAX_ENTRIES - 100)) this.entries.delete(e.id);
     this.sorted = null;
   }
   scheduleSave() {
@@ -117,7 +203,7 @@ var Leaderboard = class {
     try {
       fs.mkdirSync(path.dirname(this.file), { recursive: true });
       const tmp = `${this.file}.tmp`;
-      fs.writeFileSync(tmp, JSON.stringify({ version: 1, entries: this.order() }));
+      fs.writeFileSync(tmp, JSON.stringify({ version: FILE_VERSION, entries: [...this.entries.values()] }));
       fs.renameSync(tmp, this.file);
     } catch (err) {
       console.error("[Ranking] No se pudo guardar:", err);
@@ -599,7 +685,7 @@ var MAX_REWIND_MS = 400;
 var HISTORY_MS = 1500;
 var KILL_LIMIT_EFF = process.env.KILL_LIMIT !== void 0 ? Number(process.env.KILL_LIMIT) || 0 : KILL_LIMIT;
 var ServerPlayer = class {
-  /** Identificador persistente anónimo (hash del token) o null si el cliente no envió un token válido. */
+  /** `sub` de Google si es un usuario guardado; null = invitado (no puntúa ni se guarda). */
   constructor(id, name, ws, pid) {
     this.id = id;
     this.name = name;
@@ -686,9 +772,11 @@ var Room = class _Room {
     const clean = raw.replace(/[\u0000-\u001f\u007f<>]/g, "").trim().slice(0, NAME_MAX);
     return clean || fallback;
   }
-  join(ws, name, token) {
+  /** `user` = perfil de Google ya VERIFICADO por el servidor (null = invitado con nickname). */
+  join(ws, name, user = null) {
     const id = this.nextId++;
-    const p = new ServerPlayer(id, _Room.sanitizeName(name, `Jugador ${id}`), ws, Leaderboard.idFromToken(token));
+    if (user) this.board.upsertUser(user);
+    const p = new ServerPlayer(id, _Room.sanitizeName(user ? user.name : name, `Jugador ${id}`), ws, user ? user.sub : null);
     this.players.set(id, p);
     this.spawn(p, false);
     const mine = this.board.entry(p.pid);
@@ -700,6 +788,7 @@ var Room = class _Room {
       players: [...this.players.values()].map((q) => q.info()),
       killLimit: KILL_LIMIT_EFF,
       maxPlayers: this.maxPlayers,
+      registered: !!user,
       global: mine ? { rank: mine.rank, kills: mine.kills } : null,
       spawn: [...p.pos],
       yaw: p.yaw
@@ -854,7 +943,7 @@ var Room = class _Room {
     victim.respawnAt = now + RESPAWN_SECONDS * 1e3;
     victim.reloadEnd = 0;
     if (!killer.pid || killer.pid !== victim.pid) {
-      this.board.recordKill(killer.pid, killer.name, zone === "head");
+      this.board.recordKill(killer.pid, zone === "head");
       this.board.recordDeath(victim.pid);
     }
     this.broadcast({ t: "kill", killer: killer.id, victim: victim.id, zone, dist: dist2 });
@@ -967,6 +1056,9 @@ var leaderboard = new Leaderboard(process.env.DATA_DIR === "none" ? null : path2
 var MAX_PLAYERS_EFF = Math.max(2, Math.min(128, Number(process.env.MAX_PLAYERS) || MAX_PLAYERS));
 log(`Ranking global: ${leaderboard.size} jugadores con bajas${process.env.DATA_DIR === "none" ? " (solo en memoria)" : ` (${path2.join(DATA_DIR, "leaderboard.json")})`}`);
 var room = new Room("GLOBAL", world, leaderboard, MAX_PLAYERS_EFF);
+var GOOGLE_CLIENT_ID = (process.env.GOOGLE_CLIENT_ID ?? "").trim();
+var googleAuth = GOOGLE_CLIENT_ID ? new GoogleAuth(GOOGLE_CLIENT_ID) : null;
+log(googleAuth ? `Inicio de sesi\xF3n con Google activo (cliente ${GOOGLE_CLIENT_ID.slice(0, 12)}\u2026)` : "Inicio de sesi\xF3n con Google NO configurado (define GOOGLE_CLIENT_ID): solo invitados");
 function log(msg) {
   console.log(`[${(/* @__PURE__ */ new Date()).toISOString().slice(11, 19)}] ${msg}`);
 }
@@ -974,7 +1066,12 @@ var server = http.createServer((req, res) => {
   const url = (req.url ?? "/").split("?")[0];
   if (url === "/health") {
     res.setHeader("Content-Type", "application/json");
-    res.end(JSON.stringify({ ok: true, rooms: 1, players: room.players.size, maxPlayers: MAX_PLAYERS_EFF, ranked: leaderboard.size, protocol: PROTOCOL_VERSION }));
+    res.end(JSON.stringify({ ok: true, rooms: 1, players: room.players.size, maxPlayers: MAX_PLAYERS_EFF, ranked: leaderboard.size, users: leaderboard.users, google: !!googleAuth, protocol: PROTOCOL_VERSION }));
+    return;
+  }
+  if (url === "/api/config") {
+    res.writeHead(200, { "content-type": "application/json", "access-control-allow-origin": "*", "cache-control": "no-store" });
+    res.end(JSON.stringify({ googleClientId: GOOGLE_CLIENT_ID || null, maxPlayers: MAX_PLAYERS_EFF }));
     return;
   }
   if (url === "/api/leaderboard") {
@@ -1056,6 +1153,7 @@ wss.on("connection", (ws, req) => {
     return;
   }
   let player = null;
+  let joining = false;
   let alive = true;
   ws.on("pong", () => alive = true);
   const hb = setInterval(() => {
@@ -1083,8 +1181,39 @@ wss.on("connection", (ws, req) => {
         ws.close();
         return;
       }
-      player = room.join(ws, msg.name, msg.token);
-      log(`${player.name} (#${player.id}${player.pid ? "" : ", sin ranking"}) entra (${room.players.size}/${MAX_PLAYERS_EFF})`);
+      if (joining) return;
+      const finish = (user) => {
+        if (ws.readyState !== ws.OPEN) return;
+        if (room.full) {
+          ws.send(JSON.stringify({ t: "error", msg: `Servidor lleno (${MAX_PLAYERS_EFF}/${MAX_PLAYERS_EFF}). Int\xE9ntalo en unos minutos.` }));
+          ws.close();
+          return;
+        }
+        player = room.join(ws, msg.name, user);
+        log(`${player.name} (#${player.id}${user ? ", Google" : ", invitado"}) entra (${room.players.size}/${MAX_PLAYERS_EFF})`);
+      };
+      if (msg.idToken === void 0 || msg.idToken === null || msg.idToken === "") {
+        finish(null);
+        return;
+      }
+      if (!googleAuth) {
+        ws.send(JSON.stringify({ t: "error", msg: "El inicio de sesi\xF3n con Google no est\xE1 disponible en este servidor" }));
+        ws.close();
+        return;
+      }
+      joining = true;
+      googleAuth.verify(msg.idToken).then(
+        (user) => {
+          joining = false;
+          finish(user);
+        },
+        (err) => {
+          joining = false;
+          log(`Inicio de sesi\xF3n rechazado: ${err.message}`);
+          if (ws.readyState === ws.OPEN) ws.send(JSON.stringify({ t: "error", msg: "Sesi\xF3n de Google no v\xE1lida o caducada: vuelve a iniciar sesi\xF3n" }));
+          ws.close();
+        }
+      );
       return;
     }
     if (player) room.handle(player, msg);

@@ -3,6 +3,7 @@ import http from "node:http";
 import path from "node:path";
 import { WebSocketServer, type WebSocket } from "ws";
 import { MAX_PLAYERS, PROTOCOL_VERSION, type ClientMsg } from "../../shared/protocol";
+import { GoogleAuth } from "./GoogleAuth";
 import { Leaderboard } from "./Leaderboard";
 import { WorldCollision, type WorldData } from "../../shared/world";
 import { Room, ServerPlayer } from "./Room";
@@ -54,6 +55,10 @@ log(`Ranking global: ${leaderboard.size} jugadores con bajas${process.env.DATA_D
 
 /** La ÚNICA sala del juego: todos los jugadores comparten la misma partida continua. */
 const room = new Room("GLOBAL", world, leaderboard, MAX_PLAYERS_EFF);
+// Inicio de sesión con Google (opcional): sin GOOGLE_CLIENT_ID solo se puede entrar como invitado
+const GOOGLE_CLIENT_ID = (process.env.GOOGLE_CLIENT_ID ?? "").trim();
+const googleAuth = GOOGLE_CLIENT_ID ? new GoogleAuth(GOOGLE_CLIENT_ID) : null;
+log(googleAuth ? `Inicio de sesión con Google activo (cliente ${GOOGLE_CLIENT_ID.slice(0, 12)}…)` : "Inicio de sesión con Google NO configurado (define GOOGLE_CLIENT_ID): solo invitados");
 
 function log(msg: string): void {
   console.log(`[${new Date().toISOString().slice(11, 19)}] ${msg}`);
@@ -63,7 +68,13 @@ const server = http.createServer((req, res) => {
   const url = (req.url ?? "/").split("?")[0];
   if (url === "/health") {
     res.setHeader("Content-Type", "application/json");
-    res.end(JSON.stringify({ ok: true, rooms: 1, players: room.players.size, maxPlayers: MAX_PLAYERS_EFF, ranked: leaderboard.size, protocol: PROTOCOL_VERSION }));
+    res.end(JSON.stringify({ ok: true, rooms: 1, players: room.players.size, maxPlayers: MAX_PLAYERS_EFF, ranked: leaderboard.size, users: leaderboard.users, google: !!googleAuth, protocol: PROTOCOL_VERSION }));
+    return;
+  }
+  if (url === "/api/config") {
+    // el cliente necesita el ID de cliente de Google (público) para mostrar el botón de inicio de sesión
+    res.writeHead(200, { "content-type": "application/json", "access-control-allow-origin": "*", "cache-control": "no-store" });
+    res.end(JSON.stringify({ googleClientId: GOOGLE_CLIENT_ID || null, maxPlayers: MAX_PLAYERS_EFF }));
     return;
   }
   if (url === "/api/leaderboard") {
@@ -152,6 +163,7 @@ wss.on("connection", (ws: WebSocket, req) => {
     return;
   }
   let player: ServerPlayer | null = null;
+  let joining = false;
   let alive = true;
   ws.on("pong", () => (alive = true));
   const hb = setInterval(() => {
@@ -180,8 +192,39 @@ wss.on("connection", (ws: WebSocket, req) => {
         ws.close();
         return;
       }
-      player = room.join(ws, msg.name, msg.token);
-      log(`${player.name} (#${player.id}${player.pid ? "" : ", sin ranking"}) entra (${room.players.size}/${MAX_PLAYERS_EFF})`);
+      if (joining) return;
+      const finish = (user: Awaited<ReturnType<GoogleAuth["verify"]>> | null): void => {
+        if (ws.readyState !== ws.OPEN) return;
+        if (room.full) {
+          ws.send(JSON.stringify({ t: "error", msg: `Servidor lleno (${MAX_PLAYERS_EFF}/${MAX_PLAYERS_EFF}). Inténtalo en unos minutos.` }));
+          ws.close();
+          return;
+        }
+        player = room.join(ws, msg.name, user);
+        log(`${player.name} (#${player.id}${user ? ", Google" : ", invitado"}) entra (${room.players.size}/${MAX_PLAYERS_EFF})`);
+      };
+      if (msg.idToken === undefined || msg.idToken === null || msg.idToken === "") {
+        finish(null);
+        return;
+      }
+      if (!googleAuth) {
+        ws.send(JSON.stringify({ t: "error", msg: "El inicio de sesión con Google no está disponible en este servidor" }));
+        ws.close();
+        return;
+      }
+      joining = true;
+      googleAuth.verify(msg.idToken).then(
+        (user) => {
+          joining = false;
+          finish(user);
+        },
+        (err: Error) => {
+          joining = false;
+          log(`Inicio de sesión rechazado: ${err.message}`);
+          if (ws.readyState === ws.OPEN) ws.send(JSON.stringify({ t: "error", msg: "Sesión de Google no válida o caducada: vuelve a iniciar sesión" }));
+          ws.close();
+        },
+      );
       return;
     }
     if (player) room.handle(player, msg);

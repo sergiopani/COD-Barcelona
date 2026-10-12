@@ -13,6 +13,7 @@ import {
 import { EYE_HEIGHT, PLAYER_HP, WEAPON, normalize, rayVsPlayer, spreadDirection, type V3 } from "../../shared/combat";
 import type { WorldCollision } from "../../shared/world";
 import { spawns } from "../../src/game/world/mapLayout";
+import type { GoogleProfile } from "./GoogleAuth";
 import { Leaderboard } from "./Leaderboard";
 
 /** Límites de validación de movimiento. */
@@ -54,7 +55,7 @@ export class ServerPlayer {
   shots = 0;
   hitsLanded = 0;
 
-  /** Identificador persistente anónimo (hash del token) o null si el cliente no envió un token válido. */
+  /** `sub` de Google si es un usuario guardado; null = invitado (no puntúa ni se guarda). */
   constructor(readonly id: number, public name: string, readonly ws: WebSocket, readonly pid: string | null) {}
 
   info(): PlayerInfo {
@@ -116,9 +117,11 @@ export class Room {
     return clean || fallback;
   }
 
-  join(ws: WebSocket, name: string, token?: unknown): ServerPlayer {
+  /** `user` = perfil de Google ya VERIFICADO por el servidor (null = invitado con nickname). */
+  join(ws: WebSocket, name: string, user: GoogleProfile | null = null): ServerPlayer {
     const id = this.nextId++;
-    const p = new ServerPlayer(id, Room.sanitizeName(name, `Jugador ${id}`), ws, Leaderboard.idFromToken(token));
+    if (user) this.board.upsertUser(user);
+    const p = new ServerPlayer(id, Room.sanitizeName(user ? user.name : name, `Jugador ${id}`), ws, user ? user.sub : null);
     this.players.set(id, p);
     this.spawn(p, false);
     const mine = this.board.entry(p.pid);
@@ -130,6 +133,7 @@ export class Room {
       players: [...this.players.values()].map((q) => q.info()),
       killLimit: KILL_LIMIT_EFF,
       maxPlayers: this.maxPlayers,
+      registered: !!user,
       global: mine ? { rank: mine.rank, kills: mine.kills } : null,
       spawn: [...p.pos] as Vec3,
       yaw: p.yaw,
@@ -301,9 +305,9 @@ export class Room {
     killer.kills++;
     victim.respawnAt = now + RESPAWN_SECONDS * 1000;
     victim.reloadEnd = 0;
-    // ranking global: no cuenta matar a tu propio navegador (otra pestaña con el mismo token)
+    // ranking global: solo puntúan los usuarios guardados; no cuenta matar a tu propia cuenta (otra pestaña con la misma sesión)
     if (!killer.pid || killer.pid !== victim.pid) {
-      this.board.recordKill(killer.pid, killer.name, zone === "head");
+      this.board.recordKill(killer.pid, zone === "head");
       this.board.recordDeath(victim.pid);
     }
     this.broadcast({ t: "kill", killer: killer.id, victim: victim.id, zone, dist });

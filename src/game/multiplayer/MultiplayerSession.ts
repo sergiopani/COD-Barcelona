@@ -1,5 +1,5 @@
 import { Vector3 } from "@babylonjs/core";
-import { CLIENT_SEND_HZ, type BoardMsg, type PlayerInfo, type ServerMsg } from "../../../shared/protocol";
+import { CLIENT_SEND_HZ, JUMP_BONUS_PER_KILL, type BoardMsg, type PlayerInfo, type ServerMsg } from "../../../shared/protocol";
 import type { AudioManager } from "../audio/AudioManager";
 import type { CombatSystem } from "../combat/CombatSystem";
 import type { PlayerController } from "../player/PlayerController";
@@ -21,6 +21,8 @@ export class MultiplayerSession {
   room = "";
   killLimit = 0;
   maxPlayers = 0;
+  /** true = entraste con Google (usuario guardado). */
+  registered = false;
   /** Ranking global (top 10) y mi posición en él; llegan del servidor. */
   board: BoardMsg["top"] = [];
   myGlobal: BoardMsg["you"] = null;
@@ -50,13 +52,13 @@ export class MultiplayerSession {
     return this.remotes.renderTime();
   }
 
-  async start(url: string, name: string): Promise<void> {
+  async start(url: string, name: string, idToken?: string): Promise<void> {
     this.net.onMessage = (m) => this.onMessage(m);
     this.net.onClose = (r) => {
       this.hud.setBanner(null);
       this.onDisconnect(r);
     };
-    await this.net.connect(url, name);
+    await this.net.connect(url, name, idToken);
   }
 
   stop(): void {
@@ -111,7 +113,9 @@ export class MultiplayerSession {
         this.room = m.room;
         this.killLimit = m.killLimit;
         this.maxPlayers = m.maxPlayers;
+        this.registered = m.registered;
         this.myGlobal = m.global ? { rank: m.global.rank, kills: m.global.kills, deaths: 0, headshots: 0, total: 0 } : null;
+        this.applyJumpBonus();
         this.players.clear();
         for (const p of m.players) this.players.set(p.id, p);
         this.player.teleport(m.spawn[0], m.spawn[1], m.spawn[2], m.yaw);
@@ -174,6 +178,7 @@ export class MultiplayerSession {
       case "board":
         this.board = m.top;
         this.myGlobal = m.you;
+        this.applyJumpBonus();
         break;
       case "match":
         if (m.state === "over") this.hud.setBanner(`¡${this.nameOf(m.winner ?? 0)} gana la partida! Nueva partida en ${m.restartIn ?? 8} s`);
@@ -185,6 +190,13 @@ export class MultiplayerSession {
       default:
         break;
     }
+  }
+
+  /** Salto: +0,01 % de altura por cada baja global de un usuario guardado (los invitados no tienen bonus). */
+  private applyJumpBonus(): void {
+    const kills = this.registered ? this.myGlobal?.kills ?? 0 : 0;
+    this.player.jumpMultiplier = 1 + kills * JUMP_BONUS_PER_KILL;
+    this.hud.setGlobalStats(this.registered ? { kills, rank: this.myGlobal?.rank ?? 0, jumpBonusPct: kills * JUMP_BONUS_PER_KILL * 100 } : null);
   }
 
   private updateOwnScore(): void {

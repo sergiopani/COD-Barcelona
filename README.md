@@ -116,6 +116,11 @@ El panorama aportado (`assets-src/panorama/sf_0.jpeg`, foto esférica de Barcelo
 - **Cielo con foto real** (casilla «Cielo con foto real» del menú, activada por defecto), recoloreado a **día despejado** (azul con nubes blancas; el original era nublado): cúpula con nubes, la silueta de Barcelona, el Tibidabo, la torre Glòries y el mar. La basílica de la foto se ha retirado con un parche de ciudad/cielo
   vecinos, y bajo el horizonte se funde con la niebla. Sigue calculándose la iluminación con el cielo procedural. Calidad 4096 px (Bajo/Medio) o 6000 px (Alto). Limitación: con el zoom de 8× del francotirador la foto se ve blanda (≈ 117 px para 7°).
 
+## Cuentas, ranking y salto (solo multijugador)
+
+El juego es solo multijugador, con una única sala global. Se entra con **Google** (usuario guardado: ranking global de bajas y +0,01 % de salto por baja) o como **invitado** con nickname (sin guardar nada). Detalles, configuración del ID de cliente de Google y privacidad en `docs/GOOGLE_LOGIN.md`.
+(El modo de un jugador con bots sigue en el código pero ya no se ofrece en el menú.)
+
 ## Personajes
 
 Todos los personajes (bots y jugadores remotos) comparten el aspecto de `src/game/characters/Character.ts`: figura de bloques estilizada con chándal azul marino, camiseta roja con franja central, gorra marrón de cuadros con visera,

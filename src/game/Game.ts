@@ -9,6 +9,7 @@ import { Hud } from "./ui/Hud";
 import { MenuScreen } from "./ui/MenuScreen";
 import { MultiplayerSession } from "./multiplayer/MultiplayerSession";
 import { NetClient } from "./multiplayer/NetClient";
+import { signOut } from "./multiplayer/auth";
 import { BarcelonaMap } from "./world/BarcelonaMap";
 import { setupLighting, type LightingRig } from "./world/Lighting";
 import { loadHelicopters, type HeliSet } from "./world/Helicopters";
@@ -96,19 +97,16 @@ export class Game {
     this.input.onLockError = () => this.menu.setNote("El navegador rechazó el bloqueo del ratón. Vuelve a pulsar el botón.");
 
     this.menu.setUrlPlaceholder(NetClient.defaultUrl());
-    this.menu.onModeChange = (mode) => {
-      if (mode === "mp") void this.refreshGlobalBoard();
-    };
+    // Solo multijugador: se carga el ranking global y la configuración de inicio de sesión (ID de cliente de Google) del servidor
+    void this.refreshGlobalBoard();
+    void this.loadAuthConfig();
     this.scene.executeWhenReady(() => {
       this.menu.ready(() => {
+        if (!this.menu.canPlay()) return; // sin sesión de Google ni nickname: no se entra
         this.audio.resume(); // el AudioContext solo puede arrancar tras un gesto del usuario
         this.menu.setNote("");
         void this.input.requestLock(); // dentro del manejador del clic (gesto del usuario)
-        if (this.menu.mode === "mp") void this.startMultiplayer();
-        else {
-          this.started = true;
-          this.menu.lockMode();
-        }
+        void this.startMultiplayer();
       });
       if (this.map.sagrada.usedPlaceholder) {
         this.menu.setNote("Modelo sagrada-familia.glb no encontrado: se usa una basílica provisional.");
@@ -157,6 +155,18 @@ export class Game {
   }
 
   /** Descarga el top 10 del ranking global (API HTTP del mismo servidor) y lo muestra en el menú. */
+  private async loadAuthConfig(): Promise<void> {
+    const url = this.menu.mpSettings.url || NetClient.defaultUrl();
+    try {
+      const r = await fetch(`${NetClient.httpBase(url)}/api/config`, { signal: AbortSignal.timeout(4000) });
+      const j = (await r.json()) as { googleClientId: string | null };
+      await this.menu.setupAuth(j.googleClientId);
+    } catch {
+      await this.menu.setupAuth(null);
+      this.menu.setNote("No se pudo contactar con el servidor. ¿Está en marcha? (npm run server)");
+    }
+  }
+
   private async refreshGlobalBoard(): Promise<void> {
     const url = this.menu.mpSettings.url || NetClient.defaultUrl();
     try {
@@ -178,14 +188,16 @@ export class Game {
     this.hud.setBanner("Conectando con el servidor…");
     const session = new MultiplayerSession(this.scene, this.lighting, this.player, this.combat, this.hud, this.audio, this.combat.effects);
     try {
-      await session.start(url, cfg.name || "Jugador");
+      await session.start(url, cfg.name || "Jugador", cfg.idToken);
     } catch (e) {
       this.hud.setBanner(null);
       session.stop();
       this.input.exitLock();
       this.menu.showPause();
       this.menu.setPlayLabel("Reintentar");
-      this.menu.setNote(`${e instanceof Error ? e.message : e}. ¿Está el servidor en marcha? (npm run server)`);
+      const msg = e instanceof Error ? e.message : String(e);
+      if (msg.includes("Sesión de Google")) signOut(); // token caducado o rechazado: hay que volver a iniciar sesión
+      this.menu.setNote(msg.includes("Sesión de Google") ? msg : `${msg}. ¿Está el servidor en marcha? (npm run server)`);
       return;
     }
     session.onDisconnect = (reason) => {

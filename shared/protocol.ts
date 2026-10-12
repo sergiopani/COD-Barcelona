@@ -5,7 +5,7 @@
  * El cliente solo envía su estado de movimiento (posición/orientación, que el servidor valida) y la intención de
  * disparar/recargar. Los jugadores remotos se renderizan con interpolación (~100 ms de retardo).
  */
-export const PROTOCOL_VERSION = 2;
+export const PROTOCOL_VERSION = 3;
 /** Capacidad por defecto de la sala GLOBAL (configurable en el servidor con MAX_PLAYERS). */
 export const MAX_PLAYERS = 32;
 /** Frecuencia de instantáneas del servidor y de envío de estado del cliente (Hz). */
@@ -14,6 +14,8 @@ export const CLIENT_SEND_HZ = 20;
 /** Retardo de interpolación de los jugadores remotos (ms). */
 export const INTERP_DELAY_MS = 100;
 /** 0 = sin límite: la sala global es una partida continua. */
+/** Cada baja de un usuario guardado aumenta su altura de salto en esta fracción (0,0001 = 0,01 %). */
+export const JUMP_BONUS_PER_KILL = 0.0001;
 export const KILL_LIMIT = 0;
 export const RESPAWN_SECONDS = 3;
 export const NAME_MAX = 16;
@@ -26,8 +28,11 @@ export interface JoinMsg {
   t: "join";
   v: number;
   name: string;
-  /** Token anónimo del navegador: identifica al jugador en el ranking global (el servidor solo guarda su hash). */
-  token?: string;
+  /**
+   * ID token de «Iniciar sesión con Google». Si se envía, el servidor lo verifica; si es válido, el jugador es un usuario GUARDADO
+   * (entra con su nombre de Google, sus bajas cuentan en el ranking global y gana salto). Sin él entra como invitado (solo nickname).
+   */
+  idToken?: string;
 }
 /** Estado de movimiento (20 Hz). `p` son los PIES; `ads` = apuntando. */
 export interface StateMsg {
@@ -78,7 +83,9 @@ export interface WelcomeMsg {
   players: PlayerInfo[];
   killLimit: number;
   maxPlayers: number;
-  /** Tu ranking global actual (null si aún no tienes bajas o no hay token válido). */
+  /** true si entraste con Google (usuario guardado). */
+  registered: boolean;
+  /** Tu ranking global actual (null si eres invitado; `rank` 0 mientras no tengas bajas). */
   global: { rank: number; kills: number } | null;
   /** Posición y orientación de aparición asignadas por el servidor. */
   spawn: Vec3;
