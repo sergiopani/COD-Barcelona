@@ -85,3 +85,10 @@ Si el navegador no soporta WebGL2 el juego lo indica en el menú. **Lista de com
 ## 8. Actualizar modelos o mapa
 - Modelos nuevos: copia el original a `assets-src/<ruta>.glb`, ajusta el trabajo en `scripts/optimize-models.mjs` y ejecuta `npm run optimize:models`.
 - Cambios en el mapa: regenera la colisión del servidor (`docs/MULTIJUGADOR.md`) y recompila con `npm run build:prod`.
+
+## 9. Despliegue en AWS EC2 (el que se usa)
+- Instancia Ubuntu 26.04 (x86_64, 2 vCPU, 2 GB) en `eu-north-1` (Estocolmo). Node 22 de los paquetes de Ubuntu; servicio systemd `barcelona-fps` (usuario `bfps`) que sirve cliente + WebSocket en el **puerto 80** (HTTP) y guarda el ranking en `/opt/barcelona-fps/data`.
+- Redespliegue: `KEY=/ruta/clave.pem HOST=ubuntu@<dns> ./scripts/deploy-aws.sh` (compila, sincroniza `dist/` y `dist-server/`, reinicia). Primera vez en otra máquina: `SETUP=1`.
+- Estado/registro: `ssh … sudo systemctl status barcelona-fps` y `sudo journalctl -u barcelona-fps -f`.
+- **Sin HTTPS** todavía (no hay dominio): el juego funciona por `http://` y `ws://`. Para HTTPS hace falta un dominio apuntando a la IP, abrir el puerto 443 en el grupo de seguridad y poner Caddy/nginx por delante (sección 4); entonces añade `ALLOWED_ORIGINS`.
+- La IP/DNS público cambia si se para y arranca la instancia: asigna una **Elastic IP** para fijarla.
