@@ -79,6 +79,7 @@ function startServer(): Promise<void> {
   server = spawn("npx", ["tsx", "server/src/index.ts"], {
     env: { ...process.env, PORT: String(PORT), KILL_LIMIT: "3", ALLOW_DEBUG: "1", MAX_PLAYERS: "8", DATA_DIR, GOOGLE_CLIENT_ID: CLIENT_ID, GOOGLE_CERTS_URL: `http://127.0.0.1:${JWKS_PORT}/certs` },
     stdio: ["ignore", "pipe", "pipe"],
+    detached: true, // grupo de procesos propio: al parar solo se mata el servidor de las pruebas, no el servidor de desarrollo
   });
   server.stdout?.on("data", (d) => process.env.VERBOSE && process.stdout.write(`[srv] ${d}`));
   server.stderr?.on("data", (d) => process.stderr.write(`[srv-err] ${d}`));
@@ -97,7 +98,13 @@ function startServer(): Promise<void> {
 
 /** Para el servidor con SIGTERM (debe guardar el ranking) y espera a que desaparezca. */
 async function stopServer(): Promise<void> {
-  spawn("pkill", ["-TERM", "-f", "server/src/index.ts"]);
+  if (server?.pid) {
+    try {
+      process.kill(-server.pid, "SIGTERM"); // SIGTERM a todo el grupo (npx → tsx → node): el servidor guarda el ranking al apagarse
+    } catch {
+      /* ya terminado */
+    }
+  }
   for (let i = 0; i < 40; i++) {
     try {
       await health();
