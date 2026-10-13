@@ -1,7 +1,21 @@
+// server/src/loadEnv.ts
+import fs from "node:fs";
+import path from "node:path";
+var file = path.resolve(process.env.ENV_FILE ?? ".env");
+try {
+  for (const line of fs.readFileSync(file, "utf8").split(/\r?\n/)) {
+    const m = /^\s*([A-Z0-9_]+)\s*=\s*(.*?)\s*$/i.exec(line);
+    if (!m || line.trim().startsWith("#")) continue;
+    const v = m[2].replace(/^(['"])(.*)\1$/, "$2");
+    if (process.env[m[1]] === void 0 && v !== "") process.env[m[1]] = v;
+  }
+} catch {
+}
+
 // server/src/index.ts
-import fs2 from "node:fs";
+import fs3 from "node:fs";
 import http from "node:http";
-import path2 from "node:path";
+import path3 from "node:path";
 import { WebSocketServer } from "ws";
 
 // shared/protocol.ts
@@ -84,15 +98,15 @@ var GoogleAuth = class {
 };
 
 // server/src/Leaderboard.ts
-import fs from "node:fs";
-import path from "node:path";
+import fs2 from "node:fs";
+import path2 from "node:path";
 var MAX_ENTRIES = 1e4;
 var FILE_VERSION = 2;
 var Leaderboard = class {
   /** `file` null = solo en memoria (pruebas). */
-  constructor(file) {
-    this.file = file;
-    if (file) this.load();
+  constructor(file2) {
+    this.file = file2;
+    if (file2) this.load();
   }
   file;
   entries = /* @__PURE__ */ new Map();
@@ -103,15 +117,15 @@ var Leaderboard = class {
   load() {
     const f = this.file;
     try {
-      if (!fs.existsSync(f)) return;
-      const data = JSON.parse(fs.readFileSync(f, "utf8"));
+      if (!fs2.existsSync(f)) return;
+      const data = JSON.parse(fs2.readFileSync(f, "utf8"));
       if (data.version !== FILE_VERSION) throw new Error(`versi\xF3n de archivo ${data.version} (se esperaba ${FILE_VERSION}): ranking an\xF3nimo antiguo`);
       for (const e of data.entries ?? []) {
         if (e && typeof e.id === "string" && Number.isFinite(e.kills)) this.entries.set(e.id, e);
       }
     } catch (err) {
       try {
-        fs.copyFileSync(f, `${f}.corrupt-${Date.now()}`);
+        fs2.copyFileSync(f, `${f}.corrupt-${Date.now()}`);
       } catch {
       }
       console.error("[Ranking] Archivo corrupto, se ha guardado una copia y se reinicia:", err);
@@ -201,10 +215,10 @@ var Leaderboard = class {
       this.saveTimer = null;
     }
     try {
-      fs.mkdirSync(path.dirname(this.file), { recursive: true });
+      fs2.mkdirSync(path2.dirname(this.file), { recursive: true });
       const tmp = `${this.file}.tmp`;
-      fs.writeFileSync(tmp, JSON.stringify({ version: FILE_VERSION, entries: [...this.entries.values()] }));
-      fs.renameSync(tmp, this.file);
+      fs2.writeFileSync(tmp, JSON.stringify({ version: FILE_VERSION, entries: [...this.entries.values()] }));
+      fs2.renameSync(tmp, this.file);
     } catch (err) {
       console.error("[Ranking] No se pudo guardar:", err);
     }
@@ -1034,11 +1048,11 @@ var PORT = Number(process.env.PORT ?? 8080);
 var HOST = process.env.HOST ?? "0.0.0.0";
 var ALLOWED = (process.env.ALLOWED_ORIGINS ?? "").split(",").map((s) => s.trim()).filter(Boolean);
 var HERE = import.meta.dirname ?? ".";
-var DEFAULT_STATIC = path2.resolve(HERE, "../dist/index.html");
-var STATIC_DIR = process.env.STATIC_DIR === "none" ? null : process.env.STATIC_DIR ? path2.resolve(process.env.STATIC_DIR) : fs2.existsSync(path2.resolve("dist/index.html")) ? path2.resolve("dist") : fs2.existsSync(DEFAULT_STATIC) ? path2.dirname(DEFAULT_STATIC) : null;
-var worldFile = [path2.resolve(HERE, "../data/world-colliders.json"), path2.resolve(HERE, "data/world-colliders.json")].find((f) => fs2.existsSync(f)) ?? "";
+var DEFAULT_STATIC = path3.resolve(HERE, "../dist/index.html");
+var STATIC_DIR = process.env.STATIC_DIR === "none" ? null : process.env.STATIC_DIR ? path3.resolve(process.env.STATIC_DIR) : fs3.existsSync(path3.resolve("dist/index.html")) ? path3.resolve("dist") : fs3.existsSync(DEFAULT_STATIC) ? path3.dirname(DEFAULT_STATIC) : null;
+var worldFile = [path3.resolve(HERE, "../data/world-colliders.json"), path3.resolve(HERE, "data/world-colliders.json")].find((f) => fs3.existsSync(f)) ?? "";
 if (!worldFile) throw new Error("No se encuentra world-colliders.json");
-var world = new WorldCollision(JSON.parse(fs2.readFileSync(worldFile, "utf8")));
+var world = new WorldCollision(JSON.parse(fs3.readFileSync(worldFile, "utf8")));
 log(`Mundo cargado: ${world.boxes.length} cajas de colisi\xF3n`);
 var MIME = {
   ".html": "text/html; charset=utf-8",
@@ -1051,10 +1065,10 @@ var MIME = {
   ".svg": "image/svg+xml",
   ".txt": "text/plain"
 };
-var DATA_DIR = path2.resolve(process.env.DATA_DIR ?? "data");
-var leaderboard = new Leaderboard(process.env.DATA_DIR === "none" ? null : path2.join(DATA_DIR, "leaderboard.json"));
+var DATA_DIR = path3.resolve(process.env.DATA_DIR ?? "data");
+var leaderboard = new Leaderboard(process.env.DATA_DIR === "none" ? null : path3.join(DATA_DIR, "leaderboard.json"));
 var MAX_PLAYERS_EFF = Math.max(2, Math.min(128, Number(process.env.MAX_PLAYERS) || MAX_PLAYERS));
-log(`Ranking global: ${leaderboard.size} jugadores con bajas${process.env.DATA_DIR === "none" ? " (solo en memoria)" : ` (${path2.join(DATA_DIR, "leaderboard.json")})`}`);
+log(`Ranking global: ${leaderboard.size} jugadores con bajas${process.env.DATA_DIR === "none" ? " (solo en memoria)" : ` (${path3.join(DATA_DIR, "leaderboard.json")})`}`);
 var room = new Room("GLOBAL", world, leaderboard, MAX_PLAYERS_EFF);
 var GOOGLE_CLIENT_ID = (process.env.GOOGLE_CLIENT_ID ?? "").trim();
 var googleAuth = GOOGLE_CLIENT_ID ? new GoogleAuth(GOOGLE_CLIENT_ID) : null;
@@ -1097,42 +1111,42 @@ function serveStatic(req, res, url) {
     res.end();
     return;
   }
-  let file = path2.normalize(path2.join(STATIC_DIR, rel === "/" ? "index.html" : rel));
-  if (!file.startsWith(STATIC_DIR)) {
+  let file2 = path3.normalize(path3.join(STATIC_DIR, rel === "/" ? "index.html" : rel));
+  if (!file2.startsWith(STATIC_DIR)) {
     res.statusCode = 403;
     res.end();
     return;
   }
-  const isFile = (f) => fs2.existsSync(f) && fs2.statSync(f).isFile();
-  if (!isFile(file)) {
-    if (path2.extname(rel)) {
+  const isFile = (f) => fs3.existsSync(f) && fs3.statSync(f).isFile();
+  if (!isFile(file2)) {
+    if (path3.extname(rel)) {
       res.statusCode = 404;
       res.end("No encontrado");
       return;
     }
-    file = path2.join(STATIC_DIR, "index.html");
+    file2 = path3.join(STATIC_DIR, "index.html");
   }
-  const ext = path2.extname(file);
+  const ext = path3.extname(file2);
   const headers = {
     "Content-Type": MIME[ext] ?? "application/octet-stream",
     "X-Content-Type-Options": "nosniff",
     "Referrer-Policy": "no-referrer",
     Vary: "Accept-Encoding"
   };
-  const name = path2.basename(file);
+  const name = path3.basename(file2);
   if (ext === ".html") headers["Cache-Control"] = "no-cache";
   else if (/-[A-Za-z0-9_-]{8,}\.[a-z0-9]+$/.test(name)) headers["Cache-Control"] = "public, max-age=31536000, immutable";
   else headers["Cache-Control"] = "public, max-age=86400";
-  let send = file;
+  let send = file2;
   const accept = String(req.headers["accept-encoding"] ?? "");
-  if (accept.includes("br") && isFile(file + ".br")) {
-    send = file + ".br";
+  if (accept.includes("br") && isFile(file2 + ".br")) {
+    send = file2 + ".br";
     headers["Content-Encoding"] = "br";
-  } else if (accept.includes("gzip") && isFile(file + ".gz")) {
-    send = file + ".gz";
+  } else if (accept.includes("gzip") && isFile(file2 + ".gz")) {
+    send = file2 + ".gz";
     headers["Content-Encoding"] = "gzip";
   }
-  const st = fs2.statSync(send);
+  const st = fs3.statSync(send);
   const etag = `W/"${st.size.toString(16)}-${Math.floor(st.mtimeMs).toString(16)}"`;
   headers.ETag = etag;
   if (req.headers["if-none-match"] === etag) {
@@ -1143,7 +1157,7 @@ function serveStatic(req, res, url) {
   headers["Content-Length"] = String(st.size);
   res.writeHead(200, headers);
   if (req.method === "HEAD") res.end();
-  else fs2.createReadStream(send).pipe(res);
+  else fs3.createReadStream(send).pipe(res);
 }
 var wss = new WebSocketServer({ server, maxPayload: 4096 });
 wss.on("connection", (ws, req) => {

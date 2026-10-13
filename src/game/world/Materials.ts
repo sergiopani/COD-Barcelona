@@ -1,6 +1,7 @@
 import { Color3, DynamicTexture, PBRMaterial, Scene, Texture } from "@babylonjs/core";
 import { BATLLO_TEXTURES, BATLLO_VARIANTS, batlloKey } from "./BatlloFacade";
 import { MAILBOX_TEXTURE } from "./Mailbox";
+import { assetUrl } from "../assets";
 
 /**
  * Materiales PBR con texturas 100 % procedurales (sin descargas externas).
@@ -248,6 +249,38 @@ function pbr(scene: Scene, name: string, opts: {
   return m;
 }
 
+/**
+ * Sustituye albedo / normal / ORM procedurales de un material por el juego de texturas fotográficas `assets/textures/<base>_*.webp`
+ * (ver scripts/prepare-polyhaven.mjs). Si alguna falla al cargar, se conservan las procedurales.
+ */
+function photoTextures(scene: Scene, mat: PBRMaterial, base: string, normalLevel: number, aoStrength: number): void {
+  const keys = ["albedo", "normal", "orm"] as const;
+  const tex: Record<(typeof keys)[number], Texture | null> = { albedo: null, normal: null, orm: null };
+  let loaded = 0;
+  let failed = false;
+  for (const k of keys) {
+    const t = new Texture(assetUrl(`assets/textures/${base}_${k}.webp`), scene, false, true, Texture.TRILINEAR_SAMPLINGMODE, () => {
+      loaded++;
+      if (loaded === keys.length && !failed) {
+        mat.albedoTexture = tex.albedo;
+        mat.bumpTexture = tex.normal;
+        if (mat.bumpTexture) mat.bumpTexture.level = normalLevel;
+        mat.metallicTexture = tex.orm;
+        mat.ambientTextureStrength = aoStrength; // la oclusión del escaneo oscurece mucho: se atenúa
+      }
+    }, () => {
+      failed = true;
+      console.warn(`[Texturas] No se pudo cargar ${base}_${k}.webp: se conserva la textura procedural.`);
+      tex.albedo?.dispose();
+      tex.normal?.dispose();
+      tex.orm?.dispose();
+    });
+    t.wrapU = t.wrapV = Texture.WRAP_ADDRESSMODE;
+    t.anisotropicFilteringLevel = 8;
+    tex[k] = t;
+  }
+}
+
 export function createMaterials(scene: Scene): MaterialSet {
   const S = 512;
 
@@ -468,6 +501,12 @@ export function createMaterials(scene: Scene): MaterialSet {
   if (asphalt.bumpTexture) asphalt.bumpTexture.level = 0.6;
   const curbStone = pbr(scene, "curbStone", { tex: curbTex, roughness: 0.85 });
   for (const m of [panot, asphalt, curbStone]) m.environmentIntensity = 1;
+
+  // Texturas fotográficas (escaneos CC0 de Poly Haven) para calzada, acera y estuco: sustituyen a las procedurales cuando terminan de cargar.
+  photoTextures(scene, asphalt, "asphalt", 0.9, 0.45);
+  photoTextures(scene, panot, "pavement", 1.0, 0.45);
+  photoTextures(scene, stuccoMat, "stucco", 0.8, 0.7);
+  asphalt.albedoColor = new Color3(1.35, 1.35, 1.35); // el asfalto del escaneo es muy oscuro para la exposición del juego
 
   return {
     mat,

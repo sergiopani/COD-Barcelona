@@ -75,3 +75,9 @@ Equipo de prueba: Apple M1 Pro, navegador integrado de la app, 1024×768. Tiempo
 ## Cielo con foto real y fondo del menú
 
 `src/game/graphics/Environment.ts` (`setPhotoSky`) añade una cúpula (de −13° bajo el horizonte al cénit) con el panorama de Barcelona como hija del cielo procedural; este sigue calculando la iluminación/IBL y solo se oculta su esfera visible. Material sin iluminación con `emissiveColor = 0,13` (la canalización HDR con exposición 1,2 y ACES quemaba la foto LDR). Orientación: la torre Glòries/mar al sureste. Se desactiva desde el menú («Cielo con foto real»).
+
+## Texturas y luz reales (Poly Haven, CC0)
+
+- **Asfalto, aceras y estuco** usan texturas de escaneo (albedo + normales + ORM en WebP; `public/assets/textures/`, generadas por `npm run prepare:polyhaven`) en lugar de las procedurales; si no cargan se conservan las procedurales (`photoTextures` en `Materials.ts`). Las escalas de repetición siguen siendo las de siempre (calzada 6 m, acera 2,4 m, estuco 4 m). La oclusión del escaneo se atenúa (`ambientTextureStrength`) y la acera se desatura/aclara para parecerse a las baldosas grises de Barcelona.
+- **Iluminación basada en imagen con un HDRI real** (`public/assets/env/environment.hdr`, 2048×1024): sustituye al IBL procedural. Se le recorta la luminancia máxima (el sol del HDRI vale ~10^5 y el juego ya tiene su luz direccional) y se **gira en Y** al cargar para que la luz dominante del HDRI venga de donde está el sol del juego (`alignEnvironmentToSun`). El fondo visible sigue siendo la foto de Barcelona o el cielo procedural.
+- Memoria de vídeo añadida: ≈ 100 MB (albedo y normales a 2048², ORM a 1024², estuco a 1024²). Si va justo en equipos modestos, baja `size` en `scripts/prepare-polyhaven.mjs`.

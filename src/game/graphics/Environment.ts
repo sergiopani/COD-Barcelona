@@ -5,6 +5,7 @@ import {
   EnvironmentTextureTools,
   Effect,
   HDRCubeTexture,
+  Matrix,
   Constants,
   Color3,
   Mesh,
@@ -215,6 +216,30 @@ async function exists(url: string, magic: (b: Uint8Array) => boolean): Promise<b
   }
 }
 
+/** Gira el HDRI en Y hasta que su dirección dominante de luz (término lineal de los armónicos esféricos) apunte al sol del juego. */
+async function alignEnvironmentToSun(tex: HDRCubeTexture, toSun: Vector3): Promise<void> {
+  for (let i = 0; i < 60 && !tex.sphericalPolynomial; i++) await new Promise((r) => setTimeout(r, 100));
+  const sp = tex.sphericalPolynomial;
+  if (!sp) return;
+  // cada término lineal es un Vector3 con los canales R, G, B en x, y, z
+  const dx = sp.x.x + sp.x.y + sp.x.z;
+  const dz = sp.z.x + sp.z.y + sp.z.z;
+  if (Math.hypot(dx, dz) < 1e-6) return;
+  const envAz = Math.atan2(dx, dz); // acimut de la luz en el HDRI
+  const sunAz = Math.atan2(toSun.x, toSun.z);
+  // el cubo se muestrea con R(θ)·dirección_mundo; se busca θ tal que R(θ)·sol = dirección dominante del HDRI
+  const probe = new Vector3(toSun.x, 0, toSun.z).normalize();
+  for (const sign of [1, -1]) {
+    const theta = sign * (envAz - sunAz);
+    const v = Vector3.TransformNormal(probe, Matrix.RotationY(theta));
+    if (Math.abs(Math.atan2(Math.sin(Math.atan2(v.x, v.z) - envAz), Math.cos(Math.atan2(v.x, v.z) - envAz))) < 0.05) {
+      tex.rotationY = theta;
+      console.info(`[Entorno] HDRI orientado al sol: giro ${((theta * 180) / Math.PI).toFixed(0)}° (luz del HDRI a ${((envAz * 180) / Math.PI).toFixed(0)}°, sol a ${((sunAz * 180) / Math.PI).toFixed(0)}°)`);
+      return;
+    }
+  }
+}
+
 export function createEnvironment(scene: Scene, toSun: Vector3, intensity = 1): EnvironmentRig {
   registerSkyShader();
   const skyMat = createSkyMaterial(scene, toSun);
@@ -245,8 +270,12 @@ export function createEnvironment(scene: Scene, toSun: Vector3, intensity = 1): 
         return { source: "externo-env" as const };
       }
       if (await exists(ENV_URLS.hdr, (b) => b[0] === 0x23 && b[1] === 0x3f)) {
-        envTex = new HDRCubeTexture(ENV_URLS.hdr, scene, 256, false, true, false, true);
-        scene.environmentTexture = envTex;
+        const hdr = new HDRCubeTexture(ENV_URLS.hdr, scene, 256, false, true, false, true);
+        envTex = hdr;
+        scene.environmentTexture = hdr;
+        // Orienta el HDRI para que su zona más luminosa (donde estaba el sol al hacer la foto) coincida con el sol del juego:
+        // así la luz difusa y los reflejos del cielo vienen del mismo lado que las sombras.
+        void alignEnvironmentToSun(hdr, toSun);
         console.info("[Entorno] IBL cargado desde", ENV_URLS.hdr, "(equirectangular HDR)");
         return { source: "externo-hdr" as const };
       }

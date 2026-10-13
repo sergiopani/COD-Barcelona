@@ -105,7 +105,7 @@ export async function loadSagradaFamilia(scene: Scene, mats: MaterialSet, collis
         const mat = m.material;
         if (mat instanceof PBRMaterial) {
           if (config.tint) mat.albedoColor = new Color3(config.tint[0], config.tint[1], config.tint[2]);
-          mat.environmentIntensity = 1.1;
+          mat.environmentIntensity = 0.8; // con el HDRI real el ambiente es mucho más luminoso que el procedural: se baja para no lavar la piedra
           if (detailTex && config.detail) {
             // detalle de piedra: granulado y relieve fino que aparecen al acercarse (la textura del modelo es de baja frecuencia)
             mat.detailMap.isEnabled = true;
