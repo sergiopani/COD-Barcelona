@@ -21,6 +21,7 @@ El cliente manda el **ID token** de Google en el mensaje `join`. `server/src/Goo
    ```bash
    GOOGLE_CLIENT_ID=123456-abc.apps.googleusercontent.com npm run server
    ```
+   En local es más cómodo ponerlo en un archivo `.env` en la raíz del proyecto (`GOOGLE_CLIENT_ID=…`, ya ignorado por git; el servidor lo lee solo): entonces basta `npm run dev:all`.
    El cliente lo recibe de `GET /api/config`, así que no hay que recompilar. Sin `GOOGLE_CLIENT_ID` el botón no aparece y solo se puede entrar como invitado.
 
 ## Privacidad (RGPD)
