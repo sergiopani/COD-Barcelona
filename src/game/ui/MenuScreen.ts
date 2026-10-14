@@ -36,6 +36,21 @@ export class MenuScreen {
     }
   }
 
+  /** Sustituye los iconos de color del selector por las miniaturas 3D de cada personaje. */
+  setSkinPreviews(urls: string[]): void {
+    document.querySelectorAll<HTMLButtonElement>("#skin-picker button").forEach((b) => {
+      const url = urls[Number(b.dataset.skin)];
+      if (!url) return;
+      const img = b.querySelector("img");
+      const icon = b.querySelector("i");
+      if (img) {
+        img.src = url;
+        img.hidden = false;
+      }
+      if (icon) icon.hidden = true;
+    });
+  }
+
   /** Selector de personaje: cuatro botones (se recuerda la elección). */
   private setupSkins(): void {
     try {

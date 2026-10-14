@@ -169,3 +169,5 @@ kbd {
 #skin-picker button i { display: block; width: 26px; height: 40px; border-radius: 12px 12px 4px 4px; }
 #skin-picker button:hover { background: rgba(255,255,255,0.16); }
 #skin-picker button.sel { border-color: var(--accent); background: rgba(224,116,43,0.22); font-weight: 700; }
+#skin-picker button img { display: block; width: 100%; max-width: 74px; height: auto; border-radius: 6px; }
+#skin-picker button img[hidden], #skin-picker button i[hidden] { display: none; }

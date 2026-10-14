@@ -5,6 +5,7 @@ import { InputManager } from "./player/InputManager";
 import { PlayerController } from "./player/PlayerController";
 import { AudioManager } from "./audio/AudioManager";
 import { CombatSystem } from "./combat/CombatSystem";
+import { renderCharacterPreviews } from "./characters/Previews";
 import { Hud } from "./ui/Hud";
 import { MenuScreen } from "./ui/MenuScreen";
 import { MultiplayerSession } from "./multiplayer/MultiplayerSession";
@@ -114,6 +115,8 @@ export class Game {
     });
 
     this.engine.runRenderLoop(() => this.frame());
+    // miniaturas 3D de los personajes para el selector del menú (con el bucle ya en marcha)
+    window.setTimeout(() => void renderCharacterPreviews(this.engine).then((urls) => this.menu.setSkinPreviews(urls)), 400);
     this.exposeDebug();
   }
 

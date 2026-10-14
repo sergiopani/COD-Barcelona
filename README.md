@@ -146,3 +146,5 @@ Ver `CREDITOS.md`.
 En el menú cada jugador elige entre cuatro personajes (se recuerda la elección): **Segarro**, **La Charo**, **Perro flauta** y **Facha**. Son figuras de bloques hechas a partir de la **ropa y los complementos** de las imágenes de referencia
 (no de las caras ni de las personas): chándal azul con gorra; melena morada, gafas redondas y camiseta azul; rastas, pañuelo verde y falda de colores; traje gris con carpeta roja (`src/game/characters/Character.ts`).
 El servidor valida la elección (`skin`, protocolo v4) y la reparte a los demás jugadores; todos comparten dimensiones y zonas de impacto, así que no cambia la jugabilidad.
+
+El selector del menú muestra **miniaturas 3D reales** de los cuatro personajes (`src/game/characters/Previews.ts`: se renderiza cada modelo del juego en una escena aparte y se captura como imagen; aparecen unos segundos después de cargar el mundo, mientras tanto se ven iconos de color). No se usan fotos de personas reales.
