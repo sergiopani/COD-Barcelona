@@ -17,3 +17,7 @@
 ## Decorado de la ciudad
 `barcelona_espana.glb` (fotogrametría de Barcelona aportada por el usuario). Su origen y licencia no constan; el aspecto es el de una captura tipo Google Earth, cuyos
 términos suelen prohibir reutilizarla. **Verifica la licencia antes de publicar el juego**; por eso el GLB procesado no se sube a git (se regenera con `npm run build:city`).
+
+## Texturas del parque
+Césped, adoquín del camino y madera de los bancos: extraídos del modelo `park.glb` aportado por el usuario (origen y licencia desconocidos; verificar antes de publicar). Salen de `assets-src/park/park.glb`
+con `npm run prepare:park-textures` hacia `public/assets/park/` (fuera de git).

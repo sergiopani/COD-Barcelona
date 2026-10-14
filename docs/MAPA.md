@@ -28,9 +28,9 @@
 
 Al **oeste** de la basílica hay una segunda manzana: el parque de la Plaça de Gaudí (en la realidad, frente a la fachada de la Pasión). Es la manzana de la
 basílica trasladada un paso de cuadrícula (`PARK_CX = −133`), con el mismo octógono de chaflanes. Contiene (`ParkBlock.ts` + datos en `mapLayout.ts`):
-- césped, caminos de gravilla (un anillo alrededor del estanque y tres radios) y una explanada de baldosa junto a la basílica;
+- césped, caminos de **adoquín** (un anillo alrededor del estanque y tres radios) y una explanada de baldosa junto a la basílica; las texturas del césped, el adoquín y la madera de los bancos salen del modelo de parque aportado por el usuario (`npm run prepare:park-textures`; si faltan, se usan texturas procedurales);
 - el **estanque** (~46 × 50 m, contorno irregular, desplazado al este del centro como en la fotogrametría) con borde de piedra sólido (0,5 m; se puede saltar al agua, poco profunda) y reflejo del cielo;
-- 30 palmeras, ~90 arbustos, bancos mirando al agua, farolas y papeleras.
+- **sin árboles** (tapaban la basílica): ~140 arbustos bajos (≤ 1,3 m, por debajo de la vista) en 26 macizos, bancos de madera mirando al agua, farolas y papeleras. Las aceras del parque tampoco llevan palmeras.
 
 Consecuencias en el mapa: desaparece la manzana lateral oeste (su sitio lo ocupa el parque); las manzanas NO y SO se alargan hasta el borde oeste del parque;
 las calles transversales (z = ±66,5) siguen hasta `x = −199,5`, donde cruza una calle norte-sur cerrada al norte/sur por dos remates y al oeste por una

@@ -203,7 +203,7 @@ for (const side of [-1, 1]) {
 
 // ---------------------------------------------------------------- mobiliario y vehículos
 
-export type PropKind = "tree" | "lamp" | "bench" | "bin" | "bollard" | "trafficLight" | "sign" | "planter" | "car" | "van" | "moto" | "terrace" | "mailbox";
+export type PropKind = "tree" | "lamp" | "bench" | "parkBench" | "bin" | "bollard" | "trafficLight" | "sign" | "planter" | "car" | "van" | "moto" | "terrace" | "mailbox";
 
 export interface Prop {
   kind: PropKind;
@@ -246,7 +246,8 @@ for (const chain of [centerChain, parkChain, ...outerChains]) {
     for (let t = 6 + rng.range(0, 3); t < seg.len - 5; t += 12 + rng.range(-1, 1)) {
       if (!free(t, 3.7, 3.2)) continue;
       const p = at(t, 3.7);
-      addProp("tree", p.x, p.z, seg.ux, seg.uz, false);
+      if (chain.role === "park") rng.int(0, 7); // el parque no lleva árboles (tapan la basílica): se consume el mismo azar para no alterar el resto del mapa
+      else addProp("tree", p.x, p.z, seg.ux, seg.uz, false);
     }
     // Farolas intercaladas
     for (let t = 12 + rng.range(0, 2); t < seg.len - 5; t += 24) {
@@ -447,22 +448,26 @@ export const parkBushes: ParkBush[] = [];
     insidePark(u, v, 3) && !inParkPlaza(u, v, 2) && distToPond(u, v) > pondM && distToParkPath(u, v) > pathM;
   const wx = (u: number) => u + PARK_CX;
 
-  // Palmeras y árboles: reparto con distancia mínima (se dibujan como "tree": palmera GLB + collider de tronco).
-  const trees: V2[] = [];
-  for (let tries = 0; tries < 900 && trees.length < 30; tries++) {
+  // Sin árboles: solo arbustos BAJOS (≤ 1,3 m, por debajo de la vista) para que se vea la basílica desde todo el parque. Van en macizos
+  // (sin colisión), separados entre sí, sobre el césped y lejos de caminos y estanque.
+  const clumps: V2[] = [];
+  for (let tries = 0; tries < 1200 && clumps.length < 26; tries++) {
     const u = prng.range(-B, B);
     const v = prng.range(-B, B);
-    if (!free(u, v, 3.5, 2.2) || trees.some((t) => Math.hypot(t.x - u, t.z - v) < 8)) continue;
-    trees.push(v2(u, v));
-    addProp("tree", wx(u), v, 1, 0, false, prng.int(0, 7));
+    if (!free(u, v, 3, 3) || clumps.some((c) => Math.hypot(c.x - u, c.z - v) < 11)) continue;
+    clumps.push(v2(u, v));
   }
-  // Arbustos en grupos (sin colisión): sobre todo bordeando caminos y estanque.
-  for (let tries = 0; tries < 1400 && parkBushes.length < 90; tries++) {
-    const u = prng.range(-B, B);
-    const v = prng.range(-B, B);
-    if (!free(u, v, 0.8, 1.4) || trees.some((t) => Math.hypot(t.x - u, t.z - v) < 1.6)) continue;
-    const r = prng.range(0.7, 1.7);
-    parkBushes.push({ x: wx(u), z: v, r, h: r * prng.range(0.55, 0.9), tint: prng.range(0.8, 1.15) });
+  for (const c of clumps) {
+    const n = prng.int(4, 8);
+    for (let k = 0; k < n; k++) {
+      const a = prng.range(0, Math.PI * 2);
+      const d = prng.range(0, 3.6);
+      const u = c.x + Math.cos(a) * d;
+      const v = c.z + Math.sin(a) * d;
+      if (!free(u, v, 1, 1.6)) continue;
+      const r = prng.range(0.6, 1.4);
+      parkBushes.push({ x: wx(u), z: v, r, h: Math.min(1.3, r * prng.range(0.6, 0.9)), tint: prng.range(0.8, 1.15) });
+    }
   }
   // Bancos mirando al estanque y farolas en el anillo; papeleras en las bocas de los caminos.
   for (let i = 0; i < 10; i++) {
@@ -474,7 +479,7 @@ export const parkBushes: ParkBush[] = [];
     const l = Math.hypot(dx, dz) || 1;
     if (!insidePark(p.x, p.z, 4) || inParkPlaza(p.x, p.z, 3)) continue;
     // el Frame del banco (ux,uz) es el eje largo: perpendicular al estanque
-    addProp(i % 2 === 0 ? "bench" : "lamp", wx(p.x), p.z, -dz / l, dx / l, i % 2 === 0, prng.int(0, 7));
+    addProp(i % 2 === 0 ? "parkBench" : "lamp", wx(p.x), p.z, -dz / l, dx / l, i % 2 === 0, prng.int(0, 7));
   }
   for (const [u, v] of [[-30, 50], [-8, -46], [50, 30], [-48, -20]] as const) addProp("bin", wx(u), v, 1, 0, false);
 }

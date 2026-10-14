@@ -27,6 +27,7 @@ export type MatKey =
   | "garden"
   | "grass"
   | "gravel"
+  | "wood"
   | "water"
   | "foliage"
   | "trunk"
@@ -462,6 +463,7 @@ export function createMaterials(scene: Scene): MaterialSet {
     garden: pbr(scene, "garden", { tex: gardenTex, roughness: 0.95 }),
     grass: pbr(scene, "grass", { tex: grassTex, roughness: 0.95 }),
     gravel: pbr(scene, "gravel", { tex: gravelTex, roughness: 0.92 }),
+    wood: pbr(scene, "wood", { color: [0.5, 0.33, 0.18], roughness: 0.75 }), // madera de los bancos del parque (la textura se carga en ParkBlock)
     water: pbr(scene, "water", { tex: waterTex, roughness: 0.05 }),
     foliage: pbr(scene, "foliage", { tex: foliageTex, roughness: 0.8 }),
     trunk: pbr(scene, "trunk", { tex: trunkTex, roughness: 0.9 }),
@@ -524,8 +526,9 @@ export function createMaterials(scene: Scene): MaterialSet {
     numText: 1,
     marking: 1,
     garden: 6,
-    grass: 5,
-    gravel: 3,
+    grass: 3,
+    gravel: 2,
+    wood: 1,
     water: 8,
     foliage: 3,
     trunk: 2,

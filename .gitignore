@@ -9,3 +9,4 @@ assets-src/
 /data/
 .env
 public/assets/city/barcelona-backdrop.glb
+public/assets/park/

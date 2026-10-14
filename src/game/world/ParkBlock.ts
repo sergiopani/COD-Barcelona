@@ -1,4 +1,5 @@
-import { Mesh, Scene } from "@babylonjs/core";
+import { Mesh, PBRMaterial, Scene, Texture } from "@babylonjs/core";
+import { assetUrl } from "../assets";
 import { PARK_CX, STREET } from "../config";
 import { offsetPolyline } from "../util/geom";
 import type { CollisionManager } from "./CollisionManager";
@@ -12,17 +13,45 @@ const WHITE: RGBA = [1, 1, 1, 1];
 const POND_SEGS = 56;
 const RIM_H = 0.5;
 
+/**
+ * Sustituye las texturas procedurales de un material del parque por las del modelo de parque aportado (public/assets/park/*.webp, ver
+ * scripts/prepare-park-textures.mjs). Si faltan o fallan, se conservan las procedurales.
+ */
+function photoTextures(scene: Scene, mat: PBRMaterial, albedoFile: string, normalFile: string | null, brighten: number): void {
+  const load = (file: string, apply: (t: Texture) => void): void => {
+    const t = new Texture(assetUrl(`assets/park/${file}.webp`), scene, false, true, Texture.TRILINEAR_SAMPLINGMODE, () => apply(t), () => {
+      console.warn(`[Parque] No se pudo cargar ${file}.webp: se conserva la textura procedural (npm run prepare:park-textures).`);
+      t.dispose();
+    });
+    t.wrapU = t.wrapV = Texture.WRAP_ADDRESSMODE;
+    t.anisotropicFilteringLevel = 8;
+  };
+  load(albedoFile, (t) => {
+    mat.albedoTexture = t;
+    mat.albedoColor.scaleInPlace(brighten); // las texturas del escaneo son oscuras para la exposición del juego
+  });
+  if (normalFile) {
+    load(normalFile, (t) => {
+      mat.bumpTexture = t;
+      t.level = 1;
+    });
+  }
+}
+
 export interface ParkBuild {
   meshes: Mesh[];
 }
 
 /**
- * El parque (Plaça de Gaudí): césped, caminos de gravilla, explanada de baldosa junto a la basílica, estanque con borde de piedra
+ * El parque (Plaça de Gaudí): césped, caminos de adoquín, explanada de baldosa junto a la basílica, estanque con borde de piedra
  * (el borde es sólido: se puede saltar al agua, que es poco profunda) y arbustos. Árboles y mobiliario vienen de `props` (mapLayout).
  * Las coordenadas de mapLayout están en locales del parque (u = x − PARK_CX).
  */
 export function buildPark(scene: Scene, mats: MaterialSet, collisions: CollisionManager): ParkBuild {
   const meshes: Mesh[] = [];
+  photoTextures(scene, mats.mat.grass, "grass_albedo", "grass_normal", 1.25);
+  photoTextures(scene, mats.mat.gravel, "path_albedo", "path_normal", 2.2);
+  photoTextures(scene, mats.mat.wood, "wood_albedo", null, 1.3);
   const finish = (mesh: Mesh | null, material: Mesh["material"], shadows = true): void => {
     if (!mesh) return;
     mesh.material = material;

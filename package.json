@@ -26,7 +26,8 @@
     "prepare:panorama": "node scripts/prepare-panorama.mjs",
     "bake:letterbox": "node scripts/bake-letterbox.mjs",
     "prepare:polyhaven": "node scripts/prepare-polyhaven.mjs",
-    "build:city": "node scripts/build-city-backdrop.mjs"
+    "build:city": "node scripts/build-city-backdrop.mjs",
+    "prepare:park-textures": "node scripts/prepare-park-textures.mjs"
   },
   "dependencies": {
     "ws": "^8.22.0"

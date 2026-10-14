@@ -121,10 +121,11 @@ function lamp(set: BatchSet, f: Frame, x: number, z: number): ColBox {
   return { sx: 0.35, sy: 4.8, sz: 0.35 };
 }
 
-function bench(set: BatchSet, f: Frame): ColBox {
-  const plain = set.get(CHUNK, "plain");
+function bench(set: BatchSet, f: Frame, texturedWood = false): ColBox {
+  // los bancos del parque llevan la textura de madera (lote "wood"); los de la calle, listones de color liso
+  const plain = set.get(CHUNK, texturedWood ? "wood" : "plain");
   const iron = set.get(CHUNK, "iron");
-  const wood: RGBA = [0.42, 0.28, 0.16, 1];
+  const wood: RGBA = texturedWood ? [1.15, 1.05, 0.95, 1] : [0.42, 0.28, 0.16, 1];
   for (let i = 0; i < 3; i++) plain.addBox(f, 0, 0.45, 0.1 + i * 0.17, 1.8, 0.05, 0.14, wood);
   for (let i = 0; i < 3; i++) plain.addBox(f, 0, 0.62 + i * 0.16, -0.12 - i * 0.04, 1.8, 0.12, 0.04, wood);
   for (const u of [-0.75, 0.75]) {
@@ -236,6 +237,9 @@ export function buildProps(
         break;
       case "lamp":
         col = lamp(set, f, p.x, p.z);
+        break;
+      case "parkBench":
+        col = bench(set, f, true);
         break;
       case "bench":
         col = bench(set, f);
