@@ -17,7 +17,3 @@
 ## Decorado de la ciudad
 `barcelona_espana.glb` (fotogrametría de Barcelona aportada por el usuario). Su origen y licencia no constan; el aspecto es el de una captura tipo Google Earth, cuyos
 términos suelen prohibir reutilizarla. **Verifica la licencia antes de publicar el juego**; por eso el GLB procesado no se sube a git (se regenera con `npm run build:city`).
-
-## Parque
-`park.glb` (modelo de parque aportado por el usuario, descargado de internet; sin autor ni licencia en el archivo: nombres de nodo y texturas de árbol tipo «digitalholeinone» / «trees-no-background-png-for-photoshop»
-sugieren orígenes de Sketchfab y de recursos gratuitos). **Verifica la licencia antes de publicar el juego**; el GLB procesado y el original están fuera de git (`npm run build:park` lo regenera).
