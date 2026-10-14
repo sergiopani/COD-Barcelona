@@ -6,6 +6,7 @@ import {
   SERVER_TICK_HZ,
   type ClientMsg,
   type PlayerInfo,
+  SKIN_COUNT,
   type ServerMsg,
   type SnapPlayer,
   type Vec3,
@@ -56,10 +57,10 @@ export class ServerPlayer {
   hitsLanded = 0;
 
   /** `sub` de Google si es un usuario guardado; null = invitado (no puntúa ni se guarda). */
-  constructor(readonly id: number, public name: string, readonly ws: WebSocket, readonly pid: string | null) {}
+  constructor(readonly id: number, public name: string, readonly ws: WebSocket, readonly pid: string | null, readonly skin: number = 0) {}
 
   info(): PlayerInfo {
-    return { id: this.id, name: this.name, kills: this.kills, deaths: this.deaths, alive: this.alive };
+    return { id: this.id, name: this.name, kills: this.kills, deaths: this.deaths, alive: this.alive, skin: this.skin };
   }
 }
 
@@ -110,6 +111,11 @@ export class Room {
     for (const p of this.players.values()) if (p !== except && p.ws.readyState === 1) p.ws.send(data);
   }
 
+  /** Personaje válido (entero 0..SKIN_COUNT-1) o 0. */
+  static sanitizeSkin(raw: unknown): number {
+    return typeof raw === "number" && Number.isInteger(raw) && raw >= 0 && raw < SKIN_COUNT ? raw : 0;
+  }
+
   static sanitizeName(raw: unknown, fallback: string): string {
     if (typeof raw !== "string") return fallback;
     // quita caracteres de control y espacios sobrantes
@@ -118,10 +124,10 @@ export class Room {
   }
 
   /** `user` = perfil de Google ya VERIFICADO por el servidor (null = invitado con nickname). */
-  join(ws: WebSocket, name: string, user: GoogleProfile | null = null): ServerPlayer {
+  join(ws: WebSocket, name: string, user: GoogleProfile | null = null, skinRaw?: unknown): ServerPlayer {
     const id = this.nextId++;
     if (user) this.board.upsertUser(user);
-    const p = new ServerPlayer(id, Room.sanitizeName(user ? user.name : name, `Jugador ${id}`), ws, user ? user.sub : null);
+    const p = new ServerPlayer(id, Room.sanitizeName(user ? user.name : name, `Jugador ${id}`), ws, user ? user.sub : null, Room.sanitizeSkin(skinRaw));
     this.players.set(id, p);
     this.spawn(p, false);
     const mine = this.board.entry(p.pid);

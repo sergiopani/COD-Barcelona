@@ -140,3 +140,9 @@ en el perfil Alto y un sonido sintético de rotor que sube al acercarse (se oye 
 ## Créditos de datos
 
 Ver `CREDITOS.md`.
+
+## Selección de personaje
+
+En el menú cada jugador elige entre cuatro personajes (se recuerda la elección): **Segarro**, **La Charo**, **Perro flauta** y **Facha**. Son figuras de bloques hechas a partir de la **ropa y los complementos** de las imágenes de referencia
+(no de las caras ni de las personas): chándal azul con gorra; melena morada, gafas redondas y camiseta azul; rastas, pañuelo verde y falda de colores; traje gris con carpeta roja (`src/game/characters/Character.ts`).
+El servidor valida la elección (`skin`, protocolo v4) y la reparte a los demás jugadores; todos comparten dimensiones y zonas de impacto, así que no cambia la jugabilidad.

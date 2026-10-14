@@ -201,7 +201,7 @@ wss.on("connection", (ws: WebSocket, req) => {
           ws.close();
           return;
         }
-        player = room.join(ws, msg.name, user);
+        player = room.join(ws, msg.name, user, msg.skin);
         log(`${player.name} (#${player.id}${user ? ", Google" : ", invitado"}) entra (${room.players.size}/${MAX_PLAYERS_EFF})`);
       };
       if (msg.idToken === undefined || msg.idToken === null || msg.idToken === "") {

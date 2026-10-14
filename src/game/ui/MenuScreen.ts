@@ -18,12 +18,15 @@ export class MenuScreen {
   private readonly mpBoardNote = document.getElementById("mp-board-note") as HTMLElement;
   private readonly mpUrl = document.getElementById("mp-url") as HTMLInputElement;
   private onPlay: () => void = () => {};
+  /** Personaje elegido (0..3). */
+  skin = 0;
 
   constructor() {
     const bg = document.getElementById("menu-bg");
     if (bg) bg.style.backgroundImage = `url("${assetUrl("assets/env/menu-panorama.webp")}")`;
     this.button.addEventListener("click", () => this.onPlay());
     document.getElementById("auth-out")?.addEventListener("click", () => signOut());
+    this.setupSkins();
     onAuthChange(() => this.refreshAuth());
     try {
       this.mpName.value = localStorage.getItem("barcelonaFps.name") ?? "";
@@ -31,6 +34,23 @@ export class MenuScreen {
     } catch {
       /* sin persistencia */
     }
+  }
+
+  /** Selector de personaje: cuatro botones (se recuerda la elección). */
+  private setupSkins(): void {
+    try {
+      const saved = Number(localStorage.getItem("barcelonaFps.skin"));
+      if (Number.isInteger(saved) && saved >= 0 && saved < 4) this.skin = saved;
+    } catch {
+      /* sin persistencia */
+    }
+    const buttons = [...document.querySelectorAll<HTMLButtonElement>("#skin-picker button")];
+    const mark = (): void => buttons.forEach((b) => b.classList.toggle("sel", Number(b.dataset.skin) === this.skin));
+    for (const b of buttons) b.addEventListener("click", () => {
+      this.skin = Number(b.dataset.skin);
+      mark();
+    });
+    mark();
   }
 
   /** Muestra el usuario de Google (o el botón / el nickname de invitado). */
@@ -68,11 +88,12 @@ export class MenuScreen {
   }
 
   /** Datos del formulario multijugador (y los recuerda en localStorage). */
-  get mpSettings(): { name: string; url: string; idToken?: string } {
-    const v = { name: this.mpName.value.trim(), url: this.mpUrl.value.trim(), idToken: getAuth()?.idToken };
+  get mpSettings(): { name: string; url: string; idToken?: string; skin: number } {
+    const v = { name: this.mpName.value.trim(), url: this.mpUrl.value.trim(), idToken: getAuth()?.idToken, skin: this.skin };
     try {
       localStorage.setItem("barcelonaFps.name", v.name);
       localStorage.setItem("barcelonaFps.url", v.url);
+      localStorage.setItem("barcelonaFps.skin", String(v.skin));
     } catch {
       /* ignorar */
     }

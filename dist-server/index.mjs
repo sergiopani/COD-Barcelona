@@ -19,12 +19,13 @@ import path3 from "node:path";
 import { WebSocketServer } from "ws";
 
 // shared/protocol.ts
-var PROTOCOL_VERSION = 3;
+var PROTOCOL_VERSION = 4;
 var MAX_PLAYERS = 32;
 var SERVER_TICK_HZ = 20;
 var KILL_LIMIT = 0;
 var RESPAWN_SECONDS = 3;
 var NAME_MAX = 16;
+var SKIN_COUNT = 4;
 
 // server/src/GoogleAuth.ts
 import crypto from "node:crypto";
@@ -700,16 +701,18 @@ var HISTORY_MS = 1500;
 var KILL_LIMIT_EFF = process.env.KILL_LIMIT !== void 0 ? Number(process.env.KILL_LIMIT) || 0 : KILL_LIMIT;
 var ServerPlayer = class {
   /** `sub` de Google si es un usuario guardado; null = invitado (no puntúa ni se guarda). */
-  constructor(id, name, ws, pid) {
+  constructor(id, name, ws, pid, skin = 0) {
     this.id = id;
     this.name = name;
     this.ws = ws;
     this.pid = pid;
+    this.skin = skin;
   }
   id;
   name;
   ws;
   pid;
+  skin;
   pos = [0, 0.05, 0];
   yaw = 0;
   pitch = 0;
@@ -737,7 +740,7 @@ var ServerPlayer = class {
   shots = 0;
   hitsLanded = 0;
   info() {
-    return { id: this.id, name: this.name, kills: this.kills, deaths: this.deaths, alive: this.alive };
+    return { id: this.id, name: this.name, kills: this.kills, deaths: this.deaths, alive: this.alive, skin: this.skin };
   }
 };
 var Room = class _Room {
@@ -781,16 +784,20 @@ var Room = class _Room {
     const data = JSON.stringify(msg);
     for (const p of this.players.values()) if (p !== except && p.ws.readyState === 1) p.ws.send(data);
   }
+  /** Personaje válido (entero 0..SKIN_COUNT-1) o 0. */
+  static sanitizeSkin(raw) {
+    return typeof raw === "number" && Number.isInteger(raw) && raw >= 0 && raw < SKIN_COUNT ? raw : 0;
+  }
   static sanitizeName(raw, fallback) {
     if (typeof raw !== "string") return fallback;
     const clean = raw.replace(/[\u0000-\u001f\u007f<>]/g, "").trim().slice(0, NAME_MAX);
     return clean || fallback;
   }
   /** `user` = perfil de Google ya VERIFICADO por el servidor (null = invitado con nickname). */
-  join(ws, name, user = null) {
+  join(ws, name, user = null, skinRaw) {
     const id = this.nextId++;
     if (user) this.board.upsertUser(user);
-    const p = new ServerPlayer(id, _Room.sanitizeName(user ? user.name : name, `Jugador ${id}`), ws, user ? user.sub : null);
+    const p = new ServerPlayer(id, _Room.sanitizeName(user ? user.name : name, `Jugador ${id}`), ws, user ? user.sub : null, _Room.sanitizeSkin(skinRaw));
     this.players.set(id, p);
     this.spawn(p, false);
     const mine = this.board.entry(p.pid);
@@ -1203,7 +1210,7 @@ wss.on("connection", (ws, req) => {
           ws.close();
           return;
         }
-        player = room.join(ws, msg.name, user);
+        player = room.join(ws, msg.name, user, msg.skin);
         log(`${player.name} (#${player.id}${user ? ", Google" : ", invitado"}) entra (${room.players.size}/${MAX_PLAYERS_EFF})`);
       };
       if (msg.idToken === void 0 || msg.idToken === null || msg.idToken === "") {

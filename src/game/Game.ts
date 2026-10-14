@@ -188,7 +188,7 @@ export class Game {
     this.hud.setBanner("Conectando con el servidor…");
     const session = new MultiplayerSession(this.scene, this.lighting, this.player, this.combat, this.hud, this.audio, this.combat.effects);
     try {
-      await session.start(url, cfg.name || "Jugador", cfg.idToken);
+      await session.start(url, cfg.name || "Jugador", cfg.idToken, cfg.skin);
     } catch (e) {
       this.hud.setBanner(null);
       session.stop();

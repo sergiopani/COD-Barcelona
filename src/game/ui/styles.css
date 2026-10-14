@@ -160,3 +160,12 @@ kbd {
 #auth-note { margin: 0; font-size: 12px; color: #ffd9a0; min-height: 0; }
 .privacy { margin: 2px 0 0; font-size: 11px; opacity: 0.6; max-width: 380px; }
 #stats #st-global { color: #ffd9a0; }
+
+/* Selector de personaje */
+#skin-picker { width: 100%; text-align: center; }
+#skin-picker p { margin: 0 0 6px; font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; opacity: 0.75; }
+#skin-picker .skins { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+#skin-picker button { font: inherit; font-size: 12px; color: var(--ink); background: rgba(255,255,255,0.08); border: 2px solid rgba(255,255,255,0.2); border-radius: 6px; padding: 8px 4px 6px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+#skin-picker button i { display: block; width: 26px; height: 40px; border-radius: 12px 12px 4px 4px; }
+#skin-picker button:hover { background: rgba(255,255,255,0.16); }
+#skin-picker button.sel { border-color: var(--accent); background: rgba(224,116,43,0.22); font-weight: 700; }

@@ -116,7 +116,7 @@ async function stopServer(): Promise<void> {
 }
 
 /** `user` = cuenta de Google de pruebas (se firma un token con ese nombre); sin `user` entra como invitado. */
-function connect(name: string, user?: string, rawToken?: string): Promise<Client> {
+function connect(name: string, user?: string, rawToken?: string, skin?: number): Promise<Client> {
   return new Promise((resolve, reject) => {
     const ws = new WebSocket(URL);
     const msgs: ServerMsg[] = [];
@@ -166,7 +166,7 @@ function connect(name: string, user?: string, rawToken?: string): Promise<Client
       }
     });
     ws.on("open", () => {
-      c.send({ t: "join", v: PROTOCOL_VERSION, name, idToken: rawToken ?? (user ? signGoogle(user, name) : undefined) });
+      c.send({ t: "join", v: PROTOCOL_VERSION, name, idToken: rawToken ?? (user ? signGoogle(user, name) : undefined), skin });
       c.wait("welcome").then(() => resolve(c), () => undefined);
     });
     ws.on("error", reject);
@@ -246,6 +246,16 @@ async function main(): Promise<void> {
   const guest0 = await connect("Invitado");
   check("sin sesión: entra como invitado (no registrado, sin ranking)", guest0.welcome!.registered === false && guest0.welcome!.global === null);
   guest0.close();
+  // personajes seleccionables: el servidor valida y reparte la elección a los demás
+  const watcher = await connect("Observador");
+  const charo = await connect("Charo", undefined, undefined, 1);
+  const joinedMsg = await watcher.wait("joined", 2000, (m) => m.player.name === "Charo");
+  check("el personaje elegido (La Charo = 1) se reparte a los demás jugadores", joinedMsg.player.skin === 1 && charo.welcome!.players.find((p) => p.id === charo.id)!.skin === 1);
+  const skinBad = await connect("Raro", undefined, undefined, 99);
+  const skinBad2 = await connect("Raro2", undefined, undefined, -3);
+  check("personaje inválido (99, -3) → Segarro (0)", skinBad.welcome!.players.find((p) => p.id === skinBad.id)!.skin === 0 && skinBad2.welcome!.players.find((p) => p.id === skinBad2.id)!.skin === 0);
+  for (const c of [watcher, charo, skinBad, skinBad2]) c.close();
+  await sleep(300);
   const cfg = (await (await fetch(`http://127.0.0.1:${PORT}/api/config`)).json()) as { googleClientId: string | null };
   check("/api/config publica el ID de cliente de Google (no secreto)", cfg.googleClientId === CLIENT_ID);
   const rejected = async (tok: string): Promise<string> => {

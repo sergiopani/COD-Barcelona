@@ -5,7 +5,7 @@
  * El cliente solo envía su estado de movimiento (posición/orientación, que el servidor valida) y la intención de
  * disparar/recargar. Los jugadores remotos se renderizan con interpolación (~100 ms de retardo).
  */
-export const PROTOCOL_VERSION = 3;
+export const PROTOCOL_VERSION = 4;
 /** Capacidad por defecto de la sala GLOBAL (configurable en el servidor con MAX_PLAYERS). */
 export const MAX_PLAYERS = 32;
 /** Frecuencia de instantáneas del servidor y de envío de estado del cliente (Hz). */
@@ -19,6 +19,8 @@ export const JUMP_BONUS_PER_KILL = 0.0001;
 export const KILL_LIMIT = 0;
 export const RESPAWN_SECONDS = 3;
 export const NAME_MAX = 16;
+/** Personajes seleccionables (0 = Segarro, 1 = La Charo, 2 = Perro flauta, 3 = Facha). */
+export const SKIN_COUNT = 4;
 
 export type Vec3 = [number, number, number];
 
@@ -33,6 +35,8 @@ export interface JoinMsg {
    * (entra con su nombre de Google, sus bajas cuentan en el ranking global y gana salto). Sin él entra como invitado (solo nickname).
    */
   idToken?: string;
+  /** Personaje elegido en el menú (0..SKIN_COUNT-1); el servidor lo valida (por defecto 0). */
+  skin?: number;
 }
 /** Estado de movimiento (20 Hz). `p` son los PIES; `ads` = apuntando. */
 export interface StateMsg {
@@ -73,6 +77,8 @@ export interface PlayerInfo {
   kills: number;
   deaths: number;
   alive: boolean;
+  /** Personaje (aspecto) del jugador. */
+  skin: number;
 }
 
 export interface WelcomeMsg {

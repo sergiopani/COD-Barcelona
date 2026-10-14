@@ -27,10 +27,10 @@ export class RemotePlayer {
   /** Posición interpolada actual (pies). */
   readonly position = new Vector3();
 
-  constructor(scene: Scene, readonly id: number, public name: string, lighting: LightingRig) {
+  constructor(scene: Scene, readonly id: number, public name: string, lighting: LightingRig, skin = 0) {
     this.root = new TransformNode(`remote${id}`, scene);
     // Mismo aspecto que los bots (characters/Character.ts)
-    const parts = buildCharacter(scene, id, this.root);
+    const parts = buildCharacter(scene, id, this.root, skin);
     this.meshes.push(...parts.meshes);
     for (const m of parts.casters) lighting.addShadowCaster(m, "prop");
     this.legL = parts.legL;
@@ -124,7 +124,7 @@ export class RemotePlayers {
     return this.clock.serverNow(performance.now());
   }
 
-  onSnapshot(st: number, ps: SnapPlayer[], selfId: number, names: Map<number, string>): void {
+  onSnapshot(st: number, ps: SnapPlayer[], selfId: number, names: Map<number, string>, skins: Map<number, number> = new Map()): void {
     this.clock.update(st, performance.now());
     const seen = new Set<number>();
     for (const s of ps) {
@@ -132,7 +132,7 @@ export class RemotePlayers {
       seen.add(s[0]);
       let p = this.players.get(s[0]);
       if (!p) {
-        p = new RemotePlayer(this.scene, s[0], names.get(s[0]) ?? `Jugador ${s[0]}`, this.lighting);
+        p = new RemotePlayer(this.scene, s[0], names.get(s[0]) ?? `Jugador ${s[0]}`, this.lighting, skins.get(s[0]) ?? 0);
         this.players.set(s[0], p);
       }
       p.push(st, s);

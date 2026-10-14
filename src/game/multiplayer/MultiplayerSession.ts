@@ -52,13 +52,13 @@ export class MultiplayerSession {
     return this.remotes.renderTime();
   }
 
-  async start(url: string, name: string, idToken?: string): Promise<void> {
+  async start(url: string, name: string, idToken?: string, skin = 0): Promise<void> {
     this.net.onMessage = (m) => this.onMessage(m);
     this.net.onClose = (r) => {
       this.hud.setBanner(null);
       this.onDisconnect(r);
     };
-    await this.net.connect(url, name, idToken);
+    await this.net.connect(url, name, idToken, skin);
   }
 
   stop(): void {
@@ -102,6 +102,11 @@ export class MultiplayerSession {
     for (const p of this.players.values()) map.set(p.id, p.name);
     return map;
   }
+  private skins(): Map<number, number> {
+    const map = new Map<number, number>();
+    for (const p of this.players.values()) map.set(p.id, p.skin ?? 0);
+    return map;
+  }
   private nameOf(id: number): string {
     return this.players.get(id)?.name ?? `Jugador ${id}`;
   }
@@ -135,7 +140,7 @@ export class MultiplayerSession {
       case "snap": {
         this.lastSnapAt = performance.now();
         this.hud.setBanner(null);
-        this.remotes.onSnapshot(m.st, m.ps, this.myId, this.names());
+        this.remotes.onSnapshot(m.st, m.ps, this.myId, this.names(), this.skins());
         this.combat.applyServerState(m.you);
         break;
       }
