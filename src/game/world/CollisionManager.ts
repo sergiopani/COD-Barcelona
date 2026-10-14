@@ -98,12 +98,16 @@ export class CollisionManager {
   }
 
   /** Muros invisibles de seguridad alrededor de todo el mundo jugable. */
-  addWorldBounds(half: number): void {
+  addWorldBounds(b: { minX: number; maxX: number; minZ: number; maxZ: number }): void {
     const t = 4;
     const h = 200;
-    this.addBox(0, h / 2, half + t / 2, 2 * half + 2 * t, h, t, 0, "bounds");
-    this.addBox(0, h / 2, -half - t / 2, 2 * half + 2 * t, h, t, 0, "bounds");
-    this.addBox(half + t / 2, h / 2, 0, t, h, 2 * half, 0, "bounds");
-    this.addBox(-half - t / 2, h / 2, 0, t, h, 2 * half, 0, "bounds");
+    const w = b.maxX - b.minX;
+    const d = b.maxZ - b.minZ;
+    const cx = (b.minX + b.maxX) / 2;
+    const cz = (b.minZ + b.maxZ) / 2;
+    this.addBox(cx, h / 2, b.maxZ + t / 2, w + 2 * t, h, t, 0, "bounds");
+    this.addBox(cx, h / 2, b.minZ - t / 2, w + 2 * t, h, t, 0, "bounds");
+    this.addBox(b.maxX + t / 2, h / 2, cz, t, h, d, 0, "bounds");
+    this.addBox(b.minX - t / 2, h / 2, cz, t, h, d, 0, "bounds");
   }
 }

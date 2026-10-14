@@ -67,7 +67,7 @@ JSON sobre WebSocket; tipos en `shared/protocol.ts`. Cliente → servidor: `join
 ## Regenerar la colisión del servidor
 
 Si cambias el mapa (edificios, mobiliario, coches), el servidor debe conocer las cajas nuevas: con el juego abierto, en la consola del navegador,
-`copy(JSON.stringify(__game.dumpWorld()))` y pega el resultado en `server/data/world-colliders.json` (la basílica va como mapa de alturas grueso de 2 m).
+`copy(JSON.stringify(__game.dumpWorld()))` y pega el resultado en `server/data/world-colliders.json` (la basílica va como mapa de alturas grueso de 2 m). Hay que regenerarlo siempre que cambie la colisión del mapa (se hizo al añadir el parque: 1 799 cajas).
 
 ## Pruebas
 

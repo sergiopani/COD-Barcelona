@@ -245,6 +245,15 @@ var BLOCK_HALF = (STREET.pitch - STREET.width) / 2;
 var STREET_AXIS = STREET.pitch / 2;
 var OUTER_START = STREET_AXIS + STREET.width / 2;
 var ARM_END = OUTER_START + STREET.armLength + STREET.sidewalk;
+var PARK_CX = -STREET.pitch;
+var WEST_STREET_AXIS = PARK_CX - STREET_AXIS;
+var WEST_WALL = WEST_STREET_AXIS - STREET.width / 2;
+var WORLD = { minX: WEST_WALL - 8, maxX: ARM_END + 8, minZ: -(ARM_END + 8), maxZ: ARM_END + 8 };
+var GROUND = {
+  cx: (WEST_WALL - 6 + ARM_END + 6) / 2,
+  width: ARM_END + 6 - (WEST_WALL - 6),
+  depth: (ARM_END + 6) * 2
+};
 
 // src/game/weapons/WeaponDefinition.ts
 var M1A_SNIPER = {
@@ -350,6 +359,10 @@ function spreadDirection(fwd, spread, rnd) {
 
 // shared/world.ts
 function isRoad(x, z) {
+  if (x < -100) return isRoadBase(x, z) || isRoadBase(x - PARK_CX, z);
+  return isRoadBase(x, z);
+}
+function isRoadBase(x, z) {
   const ax = Math.abs(x);
   const az = Math.abs(z);
   const dx = Math.abs(ax - STREET_AXIS);
@@ -503,16 +516,24 @@ var northBlock = [v2(-B, E), v2(-B, O + C), v2(-B + C, O), v2(B - C, O), v2(B, O
 var cornerBlock = [v2(O, E), v2(O, O + C), v2(O + C, O), v2(E, O)];
 var endcapEast = [v2(B, E), v2(O, E)];
 var endcapWest = [v2(-O, E), v2(-B, E)];
+var PW = PARK_CX - B;
+var cornerNW = [v2(PW, E), v2(PW, O + C), v2(PW + C, O), v2(-(O + C), O), v2(-O, O + C), v2(-O, E)];
+var cornerSW = [v2(-O, -E), v2(-O, -(O + C)), v2(-(O + C), -O), v2(PW + C, -O), v2(PW, -(O + C)), v2(PW, -E)];
 var outerChains = [];
 for (let k = 0; k < 4; k++) {
-  outerChains.push(makeChain(`side${k}`, "outer", northBlock.map((p) => rotateCW(p, k)), false));
-  outerChains.push(makeChain(`corner${k}`, "outer", cornerBlock.map((p) => rotateCW(p, k)), false));
+  if (k !== 3) outerChains.push(makeChain(`side${k}`, "outer", northBlock.map((p) => rotateCW(p, k)), false));
+  const pts = k === 3 ? cornerNW : k === 2 ? cornerSW : cornerBlock.map((p) => rotateCW(p, k));
+  outerChains.push(makeChain(`corner${k}`, "outer", pts, false));
 }
+outerChains.push(makeChain("wallW", "outer", [v2(WEST_WALL, -E), v2(WEST_WALL, E)], false));
 var endcapChains = [];
 for (let k = 0; k < 4; k++) {
+  if (k === 3) continue;
   endcapChains.push(makeChain(`cap${k}a`, "endcap", endcapEast.map((p) => rotateCW(p, k)), false));
   endcapChains.push(makeChain(`cap${k}b`, "endcap", endcapWest.map((p) => rotateCW(p, k)), false));
 }
+endcapChains.push(makeChain("capW0", "endcap", [v2(WEST_WALL, E), v2(WEST_WALL + STREET.width, E)], false));
+endcapChains.push(makeChain("capW1", "endcap", [v2(WEST_WALL + STREET.width, -E), v2(WEST_WALL, -E)], false));
 var centerChain = makeChain(
   "center",
   "center",
@@ -528,8 +549,10 @@ var centerChain = makeChain(
   ],
   true
 );
+var parkChain = makeChain("park", "park", centerChain.points.map((p) => v2(p.x + PARK_CX, p.z)), true);
 var sidewalkChains = [
   centerChain,
+  parkChain,
   ...outerChains,
   ...endcapChains.map((c) => {
     const [a, b] = c.points;
@@ -550,6 +573,11 @@ for (const sx of [-1, 1]) {
     crosswalks.push({ x: sx * S, z: sz * (O + C + 2), axis: "z" });
   }
 }
+for (const sz of [-1, 1]) {
+  crosswalks.push({ x: WEST_STREET_AXIS, z: sz * (B - C - 2), axis: "z" });
+  crosswalks.push({ x: WEST_STREET_AXIS, z: sz * (O + C + 2), axis: "z" });
+  crosswalks.push({ x: WEST_STREET_AXIS + (S - (B - C - 2)), z: sz * S, axis: "x" });
+}
 function crosswalkRect(c) {
   return c.axis === "x" ? { cx: c.x, cz: c.z, hx: CROSSWALK_ALONG / 2, hz: ROAD_W / 2 } : { cx: c.x, cz: c.z, hx: ROAD_W / 2, hz: CROSSWALK_ALONG / 2 };
 }
@@ -568,16 +596,22 @@ for (const sgn of [-1, 1]) {
   for (const side of [-1, 1]) {
     const a = O + C + 8;
     const b = ARM_END - 2;
-    streetRuns.push({ axis: "x", at: sgn * S, from: side > 0 ? a : -b, to: side > 0 ? b : -a });
+    streetRuns.push({ axis: "x", at: sgn * S, from: side > 0 ? a : WEST_STREET_AXIS + 32, to: side > 0 ? b : -a });
     streetRuns.push({ axis: "z", at: sgn * S, from: side > 0 ? a : -b, to: side > 0 ? b : -a });
   }
+}
+streetRuns.push({ axis: "z", at: WEST_STREET_AXIS, from: -ringHalf, to: ringHalf });
+for (const side of [-1, 1]) {
+  const a = O + C + 8;
+  const b = ARM_END - 2;
+  streetRuns.push({ axis: "z", at: WEST_STREET_AXIS, from: side > 0 ? a : -b, to: side > 0 ? b : -a });
 }
 var props = [];
 var rng = new Rng(20260626);
 function addProp(kind, x, z, ux, uz, cover, variant = rng.int(0, 7)) {
   props.push({ kind, x, z, ux, uz, variant, cover });
 }
-for (const chain of [centerChain, ...outerChains]) {
+for (const chain of [centerChain, parkChain, ...outerChains]) {
   for (const seg of chain.segs) {
     if (seg.kind === "chamfer") {
       const mx = (seg.a.x + seg.b.x) / 2 + seg.nx * 2.6;
@@ -608,7 +642,7 @@ for (const chain of [centerChain, ...outerChains]) {
       const p = at(t, 1.1);
       addProp(rng.chance(0.7) ? "bench" : "bin", p.x, p.z, seg.ux, seg.uz, true);
     }
-    if (seg.len > 40 && chain.role !== "center") {
+    if (seg.len > 40 && chain.role !== "center" && chain.role !== "park") {
       const t = seg.len * rng.range(0.35, 0.65);
       if (free(t, 3.9, 3)) {
         const p = at(t, 3.9);
@@ -689,9 +723,92 @@ var spawns = [
   { x: S + 1.5, z: 100, yaw: Math.PI },
   { x: 100, z: -S - 1.5, yaw: -Math.PI / 2 },
   { x: -S - 1.5, z: -100, yaw: 0 },
-  { x: -100, z: S + 1.5, yaw: Math.PI / 2 }
+  { x: -100, z: S + 1.5, yaw: Math.PI / 2 },
+  { x: WEST_STREET_AXIS + 1.5, z: -30, yaw: Math.PI / 2 },
+  // calle oeste, mirando al parque
+  { x: -150, z: -S - 1.5, yaw: -Math.PI / 2 }
 ];
-var WORLD_HALF = ARM_END + 12;
+var POND = { u: 18, v: -12, rx: 23, rz: 25 };
+function pondFactor(th) {
+  return 1 + 0.1 * Math.sin(3 * th + 0.8) + 0.06 * Math.sin(5 * th + 2.1);
+}
+function pondPoint(th, scale = 1, extra = 0) {
+  const k = pondFactor(th);
+  return v2(POND.u + Math.cos(th) * (POND.rx * k * scale + extra), POND.v + Math.sin(th) * (POND.rz * k * scale + extra));
+}
+var PARK_RING_EXTRA = 6;
+var parkPaths = [];
+{
+  const ring = [];
+  for (let i = 0; i < 48; i++) ring.push(pondPoint(i / 48 * Math.PI * 2, 1, PARK_RING_EXTRA));
+  parkPaths.push({ pts: ring, width: 3.2, closed: true });
+  const spoke = (th, to) => parkPaths.push({ pts: [pondPoint(th, 1, PARK_RING_EXTRA), to], width: 2.6, closed: false });
+  spoke(Math.PI / 2, v2(POND.u + 4, B));
+  spoke(-Math.PI / 2, v2(POND.u - 4, -B));
+  spoke(Math.PI, v2(-B, POND.v - 3));
+}
+var parkPlaza = { u0: B - 13, u1: B, v0: -(B - C), v1: B - C };
+function distToSeg(p, a, b) {
+  const dx = b.x - a.x;
+  const dz = b.z - a.z;
+  const t = Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.z - a.z) * dz) / (dx * dx + dz * dz || 1)));
+  return Math.hypot(p.x - (a.x + dx * t), p.z - (a.z + dz * t));
+}
+function distToParkPath(u, v) {
+  let best = Infinity;
+  for (const path4 of parkPaths) {
+    const n = path4.pts.length;
+    const count = path4.closed ? n : n - 1;
+    for (let i = 0; i < count; i++) best = Math.min(best, distToSeg(v2(u, v), path4.pts[i], path4.pts[(i + 1) % n]) - path4.width / 2);
+  }
+  return best;
+}
+function distToPond(u, v) {
+  const du = u - POND.u;
+  const dv = v - POND.v;
+  const th = Math.atan2(dv / POND.rz, du / POND.rx);
+  const edge = pondPoint(th);
+  return Math.hypot(du, dv) - Math.hypot(edge.x - POND.u, edge.z - POND.v);
+}
+function insidePark(u, v, margin = 0) {
+  const h = B - margin;
+  return Math.abs(u) <= h && Math.abs(v) <= h && Math.abs(u) + Math.abs(v) <= 2 * B - C - margin * 1.414;
+}
+function inParkPlaza(u, v, margin = 0) {
+  return u > parkPlaza.u0 - margin && u < parkPlaza.u1 + margin && v > parkPlaza.v0 - margin && v < parkPlaza.v1 + margin;
+}
+var parkBushes = [];
+{
+  const prng = new Rng(20260705);
+  const free = (u, v, pondM, pathM) => insidePark(u, v, 3) && !inParkPlaza(u, v, 2) && distToPond(u, v) > pondM && distToParkPath(u, v) > pathM;
+  const wx = (u) => u + PARK_CX;
+  const trees = [];
+  for (let tries = 0; tries < 900 && trees.length < 30; tries++) {
+    const u = prng.range(-B, B);
+    const v = prng.range(-B, B);
+    if (!free(u, v, 3.5, 2.2) || trees.some((t) => Math.hypot(t.x - u, t.z - v) < 8)) continue;
+    trees.push(v2(u, v));
+    addProp("tree", wx(u), v, 1, 0, false, prng.int(0, 7));
+  }
+  for (let tries = 0; tries < 1400 && parkBushes.length < 90; tries++) {
+    const u = prng.range(-B, B);
+    const v = prng.range(-B, B);
+    if (!free(u, v, 0.8, 1.4) || trees.some((t) => Math.hypot(t.x - u, t.z - v) < 1.6)) continue;
+    const r = prng.range(0.7, 1.7);
+    parkBushes.push({ x: wx(u), z: v, r, h: r * prng.range(0.55, 0.9), tint: prng.range(0.8, 1.15) });
+  }
+  for (let i = 0; i < 10; i++) {
+    const th = (i + 0.5) / 10 * Math.PI * 2;
+    const p = pondPoint(th, 1, PARK_RING_EXTRA + 2.6);
+    const q = pondPoint(th, 1, 0);
+    const dx = q.x - p.x;
+    const dz = q.z - p.z;
+    const l = Math.hypot(dx, dz) || 1;
+    if (!insidePark(p.x, p.z, 4) || inParkPlaza(p.x, p.z, 3)) continue;
+    addProp(i % 2 === 0 ? "bench" : "lamp", wx(p.x), p.z, -dz / l, dx / l, i % 2 === 0, prng.int(0, 7));
+  }
+  for (const [u, v] of [[-30, 50], [-8, -46], [50, 30], [-48, -20]]) addProp("bin", wx(u), v, 1, 0, false);
+}
 
 // server/src/Room.ts
 var MAX_SPEED = 7.2;
@@ -871,7 +988,7 @@ var Room = class _Room {
     const dt = Math.min(0.5, Math.max(0.01, (now - p.lastStateAt) / 1e3));
     p.lastStateAt = now;
     let reason = null;
-    if (Math.abs(x) > 128 || Math.abs(z) > 128 || y < -0.5 || y > 5) reason = "fuera de los l\xEDmites";
+    if (x < WORLD.minX + 6 || x > 128 || Math.abs(z) > 128 || y < -0.5 || y > 5) reason = "fuera de los l\xEDmites";
     else {
       const dist2 = Math.hypot(x - p.pos[0], z - p.pos[2]);
       if (dist2 > MAX_SPEED * SPEED_TOLERANCE * dt + 0.6) reason = "velocidad imposible";

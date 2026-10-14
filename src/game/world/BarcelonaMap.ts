@@ -1,5 +1,5 @@
 import { Mesh, Scene, Vector3 } from "@babylonjs/core";
-import { ARM_END, STREET } from "../config";
+import { STREET, WORLD } from "../config";
 import { buildBuilding, pickBatlloHouses, planBuildings } from "./BuildingGenerator";
 import { CollisionManager } from "./CollisionManager";
 import type { LightingRig } from "./Lighting";
@@ -14,6 +14,7 @@ import { loadSagradaFamilia, type SagradaResult } from "./SagradaFamiliaLoader";
 import { buildProps } from "./StreetFurniture";
 import { loadVehicles, type VehicleLibrary } from "./VehicleSet";
 import { buildStreets, type StreetBuild } from "./StreetGenerator";
+import { buildPark } from "./ParkBlock";
 import { buildingChains, centerChain, crosswalkRect, crosswalks, props, spawns, type Spawn } from "./mapLayout";
 
 export interface MapStats {
@@ -63,6 +64,7 @@ export class BarcelonaMap {
     const streets = buildStreets(this.scene, mats, this.collisions);
     this.streets = streets;
     this.meshes.push(...streets.meshes);
+    this.meshes.push(...buildPark(this.scene, mats, this.collisions).meshes);
 
     await tick("Levantando edificios del Eixample…");
     await loadBatlloRelief();
@@ -119,7 +121,7 @@ export class BarcelonaMap {
       }
     }
 
-    this.collisions.addWorldBounds(ARM_END + 8);
+    this.collisions.addWorldBounds(WORLD);
     this.validate();
 
     this.stats = {

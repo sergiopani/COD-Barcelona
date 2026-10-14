@@ -1,9 +1,9 @@
 // Convierte el modelo fotogramétrico de Barcelona (assets-src/city/barcelona_espana.glb, ~1,4 × 1,4 km, 166 MB) en un DECORADO ligero para el juego:
 //   · lo alinea con el mapa (la manzana de la Sagrada Família en el origen, calles paralelas a los ejes, suelo en y = 0)
-//   · recorta un hueco cuadrado donde está el mapa jugable (allí manda el mapa procedural y la basílica)
+//   · recorta un hueco donde está el mapa jugable (allí manda el mapa procedural, la basílica y el parque): ±152 m, ampliado a 250 m por el oeste
 //   · simplifica la malla (meshoptimizer, bordes de tesela bloqueados) y reduce las texturas a WebP
 // Salida: public/assets/city/barcelona-backdrop.glb  (el juego la carga con rotación Y = 180°, ver CityBackdrop.ts)
-// Uso: node scripts/build-city-backdrop.mjs [--hole 152] [--tex 512] [--ratio 0.35] [--rot 1.5] [--cx 167.5] [--cz 365] [--ground -46.5]
+// Uso: node scripts/build-city-backdrop.mjs [--hole 152] [--holew 250] [--tex 512] [--ratio 0.35] [--rot 1.5] [--cx 167.5] [--cz 365] [--ground -46.5]
 import fs from "node:fs";
 import sharp from "sharp";
 import { MeshoptSimplifier } from "meshoptimizer";
@@ -13,7 +13,7 @@ import { flatten, prune, quantize, simplify, textureCompress, weld } from "@gltf
 
 const args = process.argv.slice(2);
 const opt = (n, d) => { const i = args.indexOf(`--${n}`); return i >= 0 ? Number(args[i + 1]) : d; };
-const HOLE = opt("hole", 152), TEX = opt("tex", 512), RATIO = opt("ratio", 1); // (la malla fotogramétrica no se deja simplificar: cada triángulo trae su propio UV)
+const HOLE = opt("hole", 152), HOLE_W = opt("holew", 250), TEX = opt("tex", 512), RATIO = opt("ratio", 1); // (la malla fotogramétrica no se deja simplificar: cada triángulo trae su propio UV)
 const ROT = (opt("rot", 1.5) * Math.PI) / 180, CX = opt("cx", 167.5), CZ = opt("cz", 365), GROUND = opt("ground", -46.5);
 const SRC = "assets-src/city/barcelona_espana.glb", OUT = "public/assets/city/barcelona-backdrop.glb";
 
@@ -45,7 +45,7 @@ for (const node of doc.getRoot().listNodes()) {
       const a = idx[t] * 3, b = idx[t + 1] * 3, d = idx[t + 2] * 3;
       const mx = (P[a] + P[b] + P[d]) / 3, mz = (P[a + 2] + P[b + 2] + P[d + 2]) / 3;
       before++;
-      if (Math.abs(mx) < HOLE && Math.abs(mz) < HOLE) { hole++; continue; }
+      if (mx > -HOLE_W && mx < HOLE && Math.abs(mz) < HOLE) { hole++; continue; }
       keep.push(idx[t], idx[t + 1], idx[t + 2]);
       after++;
     }

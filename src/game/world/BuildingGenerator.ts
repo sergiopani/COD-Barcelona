@@ -228,11 +228,15 @@ export function pickBatlloHouses(specs: BuildingSpec[], idealWidth = 12.5): void
   for (let q = 0; q < 4; q++) {
     let best: BuildingSpec | null = null;
     for (const sp of specs) {
-      if (sp.chain !== `side${q}` || sp.seg.kind === "chamfer" || sp.ground !== "shops") continue;
+      // el lado oeste de la basílica es ahora el parque: su casa Batlló (variante 3) va en las esquinas de la calle oeste, frente al parque
+      const west = q === 3;
+      if (!(west ? sp.chain === "corner3" || sp.chain === "corner2" : sp.chain === `side${q}`) || sp.seg.kind === "chamfer" || sp.ground !== "shops") continue;
       // solo fachadas que dan a la calle que rodea la basílica (no a las calles salientes)
       const mid = sp.u0 + sp.width / 2;
       const cx = sp.seg.a.x + sp.seg.ux * mid, cz = sp.seg.a.z + sp.seg.uz * mid;
-      if (Math.min(Math.abs(cx), Math.abs(cz)) > 50 || Math.max(Math.abs(cx), Math.abs(cz)) > 80) continue;
+      if (west) {
+        if (Math.abs(cx + 76.5) > 1) continue; // fachada de x = −76,5 que mira a la calle oeste de la basílica
+      } else if (Math.min(Math.abs(cx), Math.abs(cz)) > 50 || Math.max(Math.abs(cx), Math.abs(cz)) > 80) continue;
       if (!best || Math.abs(sp.width - idealWidth) < Math.abs(best.width - idealWidth)) best = sp;
     }
     if (best) best.batllo = { variant: q };

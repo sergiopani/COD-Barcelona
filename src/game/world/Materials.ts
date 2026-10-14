@@ -25,6 +25,9 @@ export type MatKey =
   | "numText"
   | "marking"
   | "garden"
+  | "grass"
+  | "gravel"
+  | "water"
   | "foliage"
   | "trunk"
   | "batllo0"
@@ -384,6 +387,35 @@ export function createMaterials(scene: Scene): MaterialSet {
     return { r: 0.52 + n * 0.12, g: 0.47 + n * 0.1, b: 0.38 + n * 0.08, h: g };
   }, 1.6);
 
+  // Césped del parque: verdes variados con manchas secas y hierba fina (la nitidez la da el normal derivado de la altura).
+  const grassTex = bake(scene, "grass", S, (u, v) => {
+    const n = fbm(u, v, 5, 5, 121);
+    const patch = fbm(u, v, 2, 3, 123);
+    const blade = vnoise(u, v, 220, 125);
+    const dry = Math.max(0, patch - 0.55) * 1.6;
+    return {
+      r: 0.19 + n * 0.1 + dry * 0.2 + blade * 0.04,
+      g: 0.34 + n * 0.16 + dry * 0.08 + blade * 0.07,
+      b: 0.09 + n * 0.05 + dry * 0.03,
+      h: blade * 0.7 + n * 0.3,
+      rough: 0.92,
+      ao: 0.85 + n * 0.15,
+    };
+  }, 2.2);
+  // Gravilla de los caminos: arena clara con grano.
+  const gravelTex = bake(scene, "gravel", S, (u, v) => {
+    const n = fbm(u, v, 6, 4, 131);
+    const g = vnoise(u, v, 256, 133);
+    const k = 0.62 + (n - 0.5) * 0.16 + (g - 0.5) * 0.14;
+    return { r: k, g: k * 0.93, b: k * 0.78, h: g, rough: 0.92, ao: 0.9 };
+  }, 2.6);
+  // Agua del estanque: casi lisa; el normal aporta un rizado muy suave que rompe el reflejo del cielo.
+  const waterTex = bake(scene, "water", 256, (u, v) => {
+    const n = fbm(u, v, 5, 4, 141);
+    const w = vnoise(u, v, 64, 143);
+    return { r: 0.1 + n * 0.05, g: 0.2 + n * 0.08 + w * 0.02, b: 0.17 + n * 0.05, h: n * 0.6 + w * 0.4 };
+  }, 0.35);
+
   const foliageTex = bake(scene, "foliage", 256, (u, v) => {
     const n = fbm(u, v, 8, 4, 101);
     const sp = vnoise(u, v, 64, 103);
@@ -428,6 +460,9 @@ export function createMaterials(scene: Scene): MaterialSet {
     numText: textMat("numText", numTex),
     marking: pbr(scene, "marking", { color: [0.85, 0.85, 0.82], roughness: 0.75 }),
     garden: pbr(scene, "garden", { tex: gardenTex, roughness: 0.95 }),
+    grass: pbr(scene, "grass", { tex: grassTex, roughness: 0.95 }),
+    gravel: pbr(scene, "gravel", { tex: gravelTex, roughness: 0.92 }),
+    water: pbr(scene, "water", { tex: waterTex, roughness: 0.05 }),
     foliage: pbr(scene, "foliage", { tex: foliageTex, roughness: 0.8 }),
     trunk: pbr(scene, "trunk", { tex: trunkTex, roughness: 0.9 }),
     batllo0: pbr(scene, "batllo0", { roughness: 0.7 }),
@@ -458,6 +493,8 @@ export function createMaterials(scene: Scene): MaterialSet {
   }
 
   // Cristal: dieléctrico con Fresnel (IOR 1,5): sutil de frente, reflectante a ángulos rasantes.
+  mat.water.environmentIntensity = 1.3; // espejo del cielo (IBL)
+  mat.water.bumpTexture && (mat.water.bumpTexture.level = 0.5);
   mat.glass.indexOfRefraction = 1.52;
   mat.glass.environmentIntensity = 1.15;
   // Pintura de coche con capa transparente (clear coat).
@@ -487,6 +524,9 @@ export function createMaterials(scene: Scene): MaterialSet {
     numText: 1,
     marking: 1,
     garden: 6,
+    grass: 5,
+    gravel: 3,
+    water: 8,
     foliage: 3,
     trunk: 2,
     batllo0: 1,

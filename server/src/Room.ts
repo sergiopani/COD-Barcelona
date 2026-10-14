@@ -13,6 +13,7 @@ import {
 } from "../../shared/protocol";
 import { EYE_HEIGHT, PLAYER_HP, WEAPON, normalize, rayVsPlayer, spreadDirection, type V3 } from "../../shared/combat";
 import type { WorldCollision } from "../../shared/world";
+import { WORLD } from "../../src/game/config";
 import { spawns } from "../../src/game/world/mapLayout";
 import type { GoogleProfile } from "./GoogleAuth";
 import { Leaderboard } from "./Leaderboard";
@@ -208,7 +209,7 @@ export class Room {
     const dt = Math.min(0.5, Math.max(0.01, (now - p.lastStateAt) / 1000));
     p.lastStateAt = now;
     let reason: string | null = null;
-    if (Math.abs(x) > 128 || Math.abs(z) > 128 || y < -0.5 || y > 5) reason = "fuera de los límites";
+    if (x < WORLD.minX + 6 || x > 128 || Math.abs(z) > 128 || y < -0.5 || y > 5) reason = "fuera de los límites";
     else {
       const dist = Math.hypot(x - p.pos[0], z - p.pos[2]);
       if (dist > MAX_SPEED * SPEED_TOLERANCE * dt + 0.6) reason = "velocidad imposible";

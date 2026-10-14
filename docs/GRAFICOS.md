@@ -86,7 +86,7 @@ Equipo de prueba: Apple M1 Pro, navegador integrado de la app, 1024×768. Tiempo
 El jugable sigue siendo la manzana de la Sagrada Família; alrededor se dibuja la **fotogrametría de Barcelona** (`assets-src/city/barcelona_espana.glb`, ~1,4 × 1,4 km, 166 MB)
 como telón de fondo: se ve por encima de los tejados, al fondo de las avenidas y desde los puntos elevados.
 - `npm run build:city` (`scripts/build-city-backdrop.mjs`) la alinea con el mapa (basílica en el origen, calles paralelas a los ejes, suelo en y = 0), recorta un hueco de ±152 m
-  donde manda el mapa procedural, quita las normales, cuantiza la malla y reduce las 66 texturas a WebP 512². Resultado: ~433 k triángulos, ~13 MB (`public/assets/city/barcelona-backdrop.glb`, fuera de git).
+  donde manda el mapa procedural (±152 m; 250 m por el oeste, por el parque), quita las normales, cuantiza la malla y reduce las 66 texturas a WebP 512². Resultado: ~433 k triángulos, ~13 MB (`public/assets/city/barcelona-backdrop.glb`, fuera de git).
 - `src/game/world/CityBackdrop.ts` la carga sin luz (la foto ya lleva sombras incorporadas, atenuada por la exposición HDR), sin sombras ni colisión. Perfil «Bajo»: desactivada.
 - **Límites honestos:** es fotogrametría aérea; a pie de calle las fachadas lejanas salen borrosas/deformadas, por eso solo sirve de fondo. «Absolutamente realista» a nivel de calle no es alcanzable con este modelo.
 - Medido (Apple M1 Pro): sin diferencia apreciable de coste de render (~14 ms/fotograma con y sin decorado, mirando desde la calle); añade ~0,9 M de triángulos activos y ~13 MB de descarga.

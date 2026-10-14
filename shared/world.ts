@@ -1,4 +1,4 @@
-import { ARM_END, STREET_AXIS } from "../src/game/config";
+import { ARM_END, PARK_CX, STREET_AXIS } from "../src/game/config";
 import { PLAYER_RADIUS, type V3 } from "./combat";
 
 /**
@@ -19,6 +19,11 @@ export interface WorldData {
 
 /** ¿Es calzada (y = 0) o acera (y = 0,14)? Misma aproximación que el cliente. */
 export function isRoad(x: number, z: number): boolean {
+  // al oeste de la basílica la cuadrícula se repite (parque + calle oeste): la misma regla con el origen trasladado un paso
+  if (x < -100) return isRoadBase(x, z) || isRoadBase(x - PARK_CX, z);
+  return isRoadBase(x, z);
+}
+function isRoadBase(x: number, z: number): boolean {
   const ax = Math.abs(x);
   const az = Math.abs(z);
   const dx = Math.abs(ax - STREET_AXIS);

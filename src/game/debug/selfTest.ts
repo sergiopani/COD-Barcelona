@@ -1,5 +1,5 @@
 import { Matrix, Mesh, Scene, Vector3 } from "@babylonjs/core";
-import { ARM_END } from "../config";
+import { ARM_END, PARK_CX, WEST_WALL, outOfWorld } from "../config";
 import type { PlayerController } from "../player/PlayerController";
 import type { BarcelonaMap } from "../world/BarcelonaMap";
 import { crosswalks } from "../world/mapLayout";
@@ -96,7 +96,7 @@ export function runCollisionSelfTest(scene: Scene, player: PlayerController, map
         const p = player.position;
         const hit = insideSolid(scene, p.add(new Vector3(0, 0.9, 0)));
         if (hit && !bad) bad = hit;
-        if ((Math.abs(p.x) > ARM_END + 8 || Math.abs(p.z) > ARM_END + 8) && !bad) bad = "fuera de los límites";
+        if (outOfWorld(p.x, p.z) && !bad) bad = "fuera de los límites";
         if (p.y < -1 && !bad) bad = "cayó bajo el suelo";
       });
       pushCount++;
@@ -155,7 +155,7 @@ export function runCollisionSelfTest(scene: Scene, player: PlayerController, map
   for (const [ax, az, yaw] of arms) {
     player.teleport(ax, 0.05, az, yaw);
     run(600, 1, true);
-    add(`calle saliente desde (${ax},${az}) termina en el remate`, Math.abs(player.position.x) < ARM_END + 1 && Math.abs(player.position.z) < ARM_END + 1, `(${player.position.x.toFixed(1)}, ${player.position.z.toFixed(1)})`);
+    add(`calle saliente desde (${ax},${az}) termina en el remate`, player.position.x > WEST_WALL - 1 && player.position.x < ARM_END + 1 && Math.abs(player.position.z) < ARM_END + 1, `(${player.position.x.toFixed(1)}, ${player.position.z.toFixed(1)})`);
   }
 
   // 8) Prueba aleatoria (fuzz): 300 recorridos con giros, laterales y saltos desde puntos de calle
@@ -188,7 +188,7 @@ export function runCollisionSelfTest(scene: Scene, player: PlayerController, map
       const p = player.position;
       const hit = insideSolid(scene, p.add(new Vector3(0, 0.9, 0))) ?? insideSolid(scene, p.add(new Vector3(0, 0.3, 0)));
       if (hit) bad = hit;
-      else if (Math.abs(p.x) > ARM_END + 8 || Math.abs(p.z) > ARM_END + 8) bad = "fuera de los límites";
+      else if (outOfWorld(p.x, p.z)) bad = "fuera de los límites";
       else if (p.y < -1) bad = "bajo el suelo";
       else if (p.y > 4) bad = "se subió a un sólido (y=" + p.y.toFixed(1) + ")";
     }
@@ -198,6 +198,40 @@ export function runCollisionSelfTest(scene: Scene, player: PlayerController, map
     }
   }
   add(`prueba aleatoria (${fuzzRuns} recorridos con giros, laterales y saltos)`, fuzzFail === 0, fuzzFail === 0 ? "ninguna penetración" : `${fuzzFail} fallos: ${fuzzDetails.join(" | ")}`);
+
+  // 9) El parque y la calle oeste: recorridos aleatorios por el césped, el estanque (borde sólido), los caminos y las calles de su alrededor
+  let parkFail = 0;
+  let parkRuns = 0;
+  const parkDetails: string[] = [];
+  for (let n = 0; n < 150; n++) {
+    const x = PARK_CX + (rnd() * 2 - 1) * 70;
+    const z = (rnd() * 2 - 1) * 70;
+    player.teleport(x, 0.5, z, rnd() * Math.PI * 2);
+    if (bodyOverlaps(scene, player.position, 0.5)) continue;
+    parkRuns++;
+    let bad: string | null = null;
+    let fwd = 1;
+    let str = 0;
+    for (let i = 0; i < 420 && !bad; i++) {
+      if (i % 45 === 0) {
+        fwd = rnd() < 0.8 ? 1 : -1;
+        str = rnd() < 0.3 ? (rnd() < 0.5 ? -1 : 1) : 0;
+        player.yaw += (rnd() - 0.5) * 2.4;
+      }
+      player.step({ forward: fwd, strafe: str, sprint: rnd() < 0.8, jump: i % 70 === 0 }, DT);
+      const p = player.position;
+      const hit = insideSolid(scene, p.add(new Vector3(0, 0.9, 0))) ?? insideSolid(scene, p.add(new Vector3(0, 0.3, 0)));
+      if (hit) bad = hit;
+      else if (outOfWorld(p.x, p.z)) bad = "fuera de los límites";
+      else if (p.y < -1) bad = "bajo el suelo";
+      else if (p.y > 4) bad = "se subió a un sólido (y=" + p.y.toFixed(1) + ")";
+    }
+    if (bad) {
+      parkFail++;
+      if (parkDetails.length < 4) parkDetails.push(`(${x.toFixed(1)},${z.toFixed(1)}) → ${bad}`);
+    }
+  }
+  add(`parque y calle oeste (${parkRuns} recorridos aleatorios)`, parkFail === 0, parkFail === 0 ? "ninguna penetración" : `${parkFail} fallos: ${parkDetails.join(" | ")}`);
 
   player.teleport(saved.pos.x, saved.pos.y, saved.pos.z, saved.yaw);
   player.pitch = saved.pitch;

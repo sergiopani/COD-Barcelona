@@ -26,6 +26,26 @@ export const OUTER_START = STREET_AXIS + STREET.width / 2; // 76.5
 /** Fin de las calles salientes (línea de las fachadas de remate). */
 export const ARM_END = OUTER_START + STREET.armLength + STREET.sidewalk; // 126
 
+/**
+ * El parque (Plaça de Gaudí): una segunda manzana, contigua al OESTE de la basílica (es la manzana de la basílica trasladada un paso de cuadrícula).
+ * Al oeste del parque corre una calle norte-sur cerrada por una fachada continua.
+ */
+export const PARK_CX = -STREET.pitch; // centro del parque: x = -133
+export const WEST_STREET_AXIS = PARK_CX - STREET_AXIS; // calle al oeste del parque: x = -199.5
+export const WEST_WALL = WEST_STREET_AXIS - STREET.width / 2; // fachada que cierra el mapa por el oeste: x = -209.5
+/** Muros invisibles del mundo jugable (el lado oeste llega hasta la fachada del fondo). */
+export const WORLD = { minX: WEST_WALL - 8, maxX: ARM_END + 8, minZ: -(ARM_END + 8), maxZ: ARM_END + 8 } as const;
+/** Plano de asfalto bajo todo el mundo (6 m de margen). */
+export const GROUND = {
+  cx: (WEST_WALL - 6 + ARM_END + 6) / 2,
+  width: ARM_END + 6 - (WEST_WALL - 6),
+  depth: (ARM_END + 6) * 2,
+} as const;
+/** ¿Está el punto fuera del mundo jugable? */
+export function outOfWorld(x: number, z: number): boolean {
+  return x < WORLD.minX || x > WORLD.maxX || z < WORLD.minZ || z > WORLD.maxZ;
+}
+
 export const PLAYER = {
   eyeHeight: 1.65,
   /** Semi-ejes del elipsoide de colisión (x, y, z). */

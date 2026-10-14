@@ -1,5 +1,5 @@
 import { Mesh, MeshBuilder, Scene, VertexBuffer } from "@babylonjs/core";
-import { ARM_END, STREET } from "../config";
+import { GROUND, STREET } from "../config";
 import { offsetPolyline } from "../util/geom";
 import { BatchSet, MeshBatch, type P3 } from "./MeshBatch";
 import { addWorldUv2 } from "./WetSurfaces";
@@ -29,11 +29,14 @@ export function buildStreets(scene: Scene, mats: MaterialSet, collisions: Collis
   const meshes: Mesh[] = [];
 
   // Calzada: un único plano de asfalto bajo todo el mapa (las aceras se apoyan encima).
-  const size = (ARM_END + 6) * 2;
-  const asphalt = MeshBuilder.CreateGround("asphalt", { width: size, height: size, subdivisions: 1 }, scene);
+  const asphalt = MeshBuilder.CreateGround("asphalt", { width: GROUND.width, height: GROUND.depth, subdivisions: 1 }, scene);
   const uv = asphalt.getVerticesData(VertexBuffer.UVKind)!;
-  for (let i = 0; i < uv.length; i++) uv[i] *= size / 6;
+  for (let i = 0; i < uv.length; i += 2) {
+    uv[i] *= GROUND.width / 6;
+    uv[i + 1] *= GROUND.depth / 6;
+  }
   asphalt.setVerticesData(VertexBuffer.UVKind, uv);
+  asphalt.position.x = GROUND.cx;
   addWorldUv2(asphalt);
   asphalt.material = mats.asphalt;
   asphalt.receiveShadows = true;

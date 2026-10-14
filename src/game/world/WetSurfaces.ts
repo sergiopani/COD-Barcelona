@@ -1,5 +1,5 @@
 import { DynamicTexture, Mesh, PBRMaterial, Scene, Texture, VertexBuffer } from "@babylonjs/core";
-import { ARM_END } from "../config";
+import { GROUND } from "../config";
 import { Rng } from "../util/rng";
 import type { MaterialSet } from "./Materials";
 import { streetRuns } from "./mapLayout";
@@ -16,14 +16,15 @@ export interface WetSet {
   curb: PBRMaterial;
 }
 
-const WORLD = (ARM_END + 6) * 2;
+// la máscara es cuadrada y cubre el lado largo del plano de asfalto; (GROUND.cx, 0) es su centro
+const WORLD = GROUND.width;
 const MASK_SIZE = 2048;
 
 /** Asigna UV2 (coordenadas de mundo normalizadas) al plano del asfalto. */
 export function addWorldUv2(ground: Mesh): void {
   const pos = ground.getVerticesData(VertexBuffer.PositionKind)!;
   const uv2: number[] = [];
-  for (let i = 0; i < pos.length; i += 3) uv2.push((pos[i] + WORLD / 2) / WORLD, (pos[i + 2] + WORLD / 2) / WORLD);
+  for (let i = 0; i < pos.length; i += 3) uv2.push((pos[i] + ground.position.x - GROUND.cx + WORLD / 2) / WORLD, (pos[i + 2] + WORLD / 2) / WORLD);
   ground.setVerticesData(VertexBuffer.UV2Kind, uv2);
 }
 
@@ -39,7 +40,7 @@ function paintPuddleMask(scene: Scene): DynamicTexture {
   ctx.fillRect(0, 0, MASK_SIZE, MASK_SIZE);
   const rng = new Rng(4242);
   const k = MASK_SIZE / WORLD;
-  const toPx = (x: number, z: number): [number, number] => [(x + WORLD / 2) * k, (z + WORLD / 2) * k];
+  const toPx = (x: number, z: number): [number, number] => [(x - GROUND.cx + WORLD / 2) * k, (z + WORLD / 2) * k];
   const blob = (x: number, z: number, rx: number, rz: number, rot: number) => {
     const [px, py] = toPx(x, z);
     for (const [s, a] of [[1, 0.3], [0.85, 0.35], [0.7, 0.45], [0.5, 0.6]] as const) {
