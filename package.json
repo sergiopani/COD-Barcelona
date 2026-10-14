@@ -25,7 +25,8 @@
     "build:sagrada-procedural": "node scripts/build-sagrada-procedural.mjs",
     "prepare:panorama": "node scripts/prepare-panorama.mjs",
     "bake:letterbox": "node scripts/bake-letterbox.mjs",
-    "prepare:polyhaven": "node scripts/prepare-polyhaven.mjs"
+    "prepare:polyhaven": "node scripts/prepare-polyhaven.mjs",
+    "build:city": "node scripts/build-city-backdrop.mjs"
   },
   "dependencies": {
     "ws": "^8.22.0"

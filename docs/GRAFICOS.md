@@ -81,3 +81,12 @@ Equipo de prueba: Apple M1 Pro, navegador integrado de la app, 1024×768. Tiempo
 - **Asfalto, aceras y estuco** usan texturas de escaneo (albedo + normales + ORM en WebP; `public/assets/textures/`, generadas por `npm run prepare:polyhaven`) en lugar de las procedurales; si no cargan se conservan las procedurales (`photoTextures` en `Materials.ts`). Las escalas de repetición siguen siendo las de siempre (calzada 6 m, acera 2,4 m, estuco 4 m). La oclusión del escaneo se atenúa (`ambientTextureStrength`) y la acera se desatura/aclara para parecerse a las baldosas grises de Barcelona.
 - **Iluminación basada en imagen con un HDRI real** (`public/assets/env/environment.hdr`, 2048×1024): sustituye al IBL procedural. Se le recorta la luminancia máxima (el sol del HDRI vale ~10^5 y el juego ya tiene su luz direccional) y se **gira en Y** al cargar para que la luz dominante del HDRI venga de donde está el sol del juego (`alignEnvironmentToSun`). El fondo visible sigue siendo la foto de Barcelona o el cielo procedural.
 - Memoria de vídeo añadida: ≈ 100 MB (albedo y normales a 2048², ORM a 1024², estuco a 1024²). Si va justo en equipos modestos, baja `size` en `scripts/prepare-polyhaven.mjs`.
+
+## Decorado: la ciudad real alrededor del mapa (fotogrametría)
+El jugable sigue siendo la manzana de la Sagrada Família; alrededor se dibuja la **fotogrametría de Barcelona** (`assets-src/city/barcelona_espana.glb`, ~1,4 × 1,4 km, 166 MB)
+como telón de fondo: se ve por encima de los tejados, al fondo de las avenidas y desde los puntos elevados.
+- `npm run build:city` (`scripts/build-city-backdrop.mjs`) la alinea con el mapa (basílica en el origen, calles paralelas a los ejes, suelo en y = 0), recorta un hueco de ±152 m
+  donde manda el mapa procedural, quita las normales, cuantiza la malla y reduce las 66 texturas a WebP 512². Resultado: ~433 k triángulos, ~13 MB (`public/assets/city/barcelona-backdrop.glb`, fuera de git).
+- `src/game/world/CityBackdrop.ts` la carga sin luz (la foto ya lleva sombras incorporadas, atenuada por la exposición HDR), sin sombras ni colisión. Perfil «Bajo»: desactivada.
+- **Límites honestos:** es fotogrametría aérea; a pie de calle las fachadas lejanas salen borrosas/deformadas, por eso solo sirve de fondo. «Absolutamente realista» a nivel de calle no es alcanzable con este modelo.
+- Medido (Apple M1 Pro): sin diferencia apreciable de coste de render (~14 ms/fotograma con y sin decorado, mirando desde la calle); añade ~0,9 M de triángulos activos y ~13 MB de descarga.

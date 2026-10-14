@@ -14,6 +14,7 @@ import { signOut } from "./multiplayer/auth";
 import { BarcelonaMap } from "./world/BarcelonaMap";
 import { setupLighting, type LightingRig } from "./world/Lighting";
 import { loadHelicopters, type HeliSet } from "./world/Helicopters";
+import { loadCityBackdrop, type CityBackdrop } from "./world/CityBackdrop";
 import { runCollisionSelfTest } from "./debug/selfTest";
 import { runCombatTest } from "./debug/combatTest";
 import { dumpWorld } from "./debug/dumpWorld";
@@ -32,6 +33,7 @@ export class Game {
   private combat!: CombatSystem;
   private session: MultiplayerSession | null = null;
   private helis: HeliSet | null = null;
+  private city: CityBackdrop | null = null;
   private readonly audio = new AudioManager();
   private readonly hud = new Hud();
   private started = false;
@@ -72,6 +74,8 @@ export class Game {
     // Helicópteros decorativos que sobrevuelan la ciudad
     this.menu.setProgress("Preparando los helicópteros…", 0.97);
     this.helis = await loadHelicopters(this.scene, this.lighting, this.settings.current.helicopters);
+    this.menu.setProgress("Cargando la ciudad de Barcelona…", 0.98);
+    this.city = await loadCityBackdrop(this.scene);
 
     // Perfil gráfico y asfalto mojado (aplican opciones reales de renderizado)
     this.applyGraphics();
@@ -225,6 +229,7 @@ export class Game {
     this.map.setWet(this.settings.wet);
     this.lighting.setWet(this.settings.wet);
     this.helis?.setCount(p.helicopters);
+    this.city?.setEnabled(p.cityBackdrop);
     this.lighting.env.setPhotoSky(this.settings.skyPhoto, this.settings.profile === "high" ? "high" : "medium");
     // filtrado anisotrópico en todas las texturas de la escena
     for (const t of this.scene.textures) t.anisotropicFilteringLevel = Math.min(p.anisotropy, this.engine.getCaps().maxAnisotropy || 4);

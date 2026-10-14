@@ -13,3 +13,7 @@
 - **Buzón de Correos (8 repartidos por las aceras):** escaneo fotogramétrico `correos_letterbox_barcelona_catalunya.glb` aportado por el usuario (Sketchfab); autor y licencia desconocidos, verificar antes de publicar. Se hornea a un atlas de color con `scripts/bake-letterbox.mjs` (el escaneo incluye un trozo de acera real, no utilizado).
 - **Helicóptero de policía:** `police_helicopter_1_unity3d.glb` aportado por el usuario (Sketchfab); autor y licencia desconocidos, verificar antes de publicar.
 - **Texturas y HDRI fotográficos (Poly Haven, licencia CC0 — dominio público, <https://polyhaven.com>):** `asphalt_02` (calzada), `concrete_pavement_03` (aceras), `beige_wall_001` (estuco de fachada) y el HDRI `circus_maximus_2` (iluminación y reflejos del cielo). No exigen atribución; se citan por cortesía. Se procesan con `scripts/prepare-polyhaven.mjs` (el HDRI se recorta para quitarle el disco solar).
+
+## Decorado de la ciudad
+`barcelona_espana.glb` (fotogrametría de Barcelona aportada por el usuario). Su origen y licencia no constan; el aspecto es el de una captura tipo Google Earth, cuyos
+términos suelen prohibir reutilizarla. **Verifica la licencia antes de publicar el juego**; por eso el GLB procesado no se sube a git (se regenera con `npm run build:city`).

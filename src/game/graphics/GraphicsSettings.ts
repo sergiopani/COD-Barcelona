@@ -35,6 +35,8 @@ export interface GraphicsProfile {
   ssr: boolean;
   /** Helicópteros que sobrevuelan la ciudad. */
   helicopters: number;
+  /** Decorado: la ciudad real de Barcelona (fotogrametría) alrededor del mapa. */
+  cityBackdrop: boolean;
 }
 
 export const PROFILES: Record<ProfileName, GraphicsProfile> = {
@@ -53,6 +55,7 @@ export const PROFILES: Record<ProfileName, GraphicsProfile> = {
     drawDistance: 500,
     ssr: false,
     helicopters: 2,
+    cityBackdrop: false,
   },
   medium: {
     label: "Medio",
@@ -69,6 +72,7 @@ export const PROFILES: Record<ProfileName, GraphicsProfile> = {
     drawDistance: 700,
     ssr: false,
     helicopters: 3,
+    cityBackdrop: true,
   },
   high: {
     label: "Alto",
@@ -85,6 +89,7 @@ export const PROFILES: Record<ProfileName, GraphicsProfile> = {
     drawDistance: 900,
     ssr: true,
     helicopters: 4,
+    cityBackdrop: true,
   },
 };
 

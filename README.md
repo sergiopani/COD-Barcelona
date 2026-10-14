@@ -39,7 +39,7 @@ Multijugador: `docs/MULTIJUGADOR.md`. Tests: `npm test` (servidor + interpolaci�
 
 Producción: `npm run build:prod && npm start` (un solo proceso que sirve cliente + multijugador en :8080). Ver `docs/DESPLIEGUE.md`.
 
-Otros comandos: `npm run build` (typecheck + build de producción en `dist/`), `npm run preview`, `npm run typecheck`.
+Decorado de ciudad: `npm run build:city` (procesa `assets-src/city/barcelona_espana.glb`; ver `docs/GRAFICOS.md`). Otros comandos: `npm run build` (typecheck + build de producción en `dist/`), `npm run preview`, `npm run typecheck`.
 
 ## La Sagrada Família (modelo 3D)
 
