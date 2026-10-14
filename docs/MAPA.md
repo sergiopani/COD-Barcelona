@@ -30,6 +30,7 @@ Al **oeste** de la basílica hay una segunda manzana: el parque de la Plaça de 
 basílica trasladada un paso de cuadrícula (`PARK_CX = −133`), con el mismo octógono de chaflanes. Contiene (`ParkBlock.ts` + datos en `mapLayout.ts`):
 - césped, caminos de **adoquín** (un anillo alrededor del estanque y tres radios) y una explanada de baldosa junto a la basílica; las texturas del césped, el adoquín y la madera de los bancos salen del modelo de parque aportado por el usuario (`npm run prepare:park-textures`; si faltan, se usan texturas procedurales);
 - el **estanque** (~46 × 50 m, contorno irregular, desplazado al este del centro como en la fotogrametría) con borde de piedra sólido (0,5 m; se puede saltar al agua, poco profunda) y reflejo del cielo;
+- una **estatua de Doraemon** (`Statue.ts`, modelo `public/assets/props/doraemon.glb`) de ~12 m con pedestal de piedra (una palmera y media), mirando al este, en el hueco de césped más cercano al centro del parque —el centro exacto cae dentro del estanque—; el pedestal es sólido y la posición está en `STATUE` (`mapLayout.ts`);
 - **sin árboles** (tapaban la basílica): ~140 arbustos bajos (≤ 1,3 m, por debajo de la vista) en 26 macizos, bancos de madera mirando al agua, farolas y papeleras. Las aceras del parque tampoco llevan palmeras.
 
 Consecuencias en el mapa: desaparece la manzana lateral oeste (su sitio lo ocupa el parque); las manzanas NO y SO se alargan hasta el borde oeste del parque;

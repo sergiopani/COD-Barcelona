@@ -21,3 +21,6 @@ términos suelen prohibir reutilizarla. **Verifica la licencia antes de publicar
 ## Texturas del parque
 Césped, adoquín del camino y madera de los bancos: extraídos del modelo `park.glb` aportado por el usuario (origen y licencia desconocidos; verificar antes de publicar). Salen de `assets-src/park/park.glb`
 con `npm run prepare:park-textures` hacia `public/assets/park/` (fuera de git).
+
+## Estatua del parque
+`doraemon.glb`: modelo de Doraemon aportado por el usuario (autor y licencia desconocidos). **Doraemon es un personaje con derechos de autor (Fujiko F. Fujio / Shogakukan)**: está bien para un juego personal o de aficionados, pero conviene pensarlo antes de publicar o monetizar. El GLB está fuera de git (`public/assets/props/doraemon.glb`; el original, en `assets-src/doraemon/`).

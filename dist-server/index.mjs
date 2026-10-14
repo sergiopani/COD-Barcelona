@@ -779,9 +779,10 @@ function inParkPlaza(u, v, margin = 0) {
   return u > parkPlaza.u0 - margin && u < parkPlaza.u1 + margin && v > parkPlaza.v0 - margin && v < parkPlaza.v1 + margin;
 }
 var parkBushes = [];
+var STATUE = { u: -18, v: 0, half: 3.6, yaw: Math.PI / 2 };
 {
   const prng = new Rng(20260705);
-  const free = (u, v, pondM, pathM) => insidePark(u, v, 3) && !inParkPlaza(u, v, 2) && distToPond(u, v) > pondM && distToParkPath(u, v) > pathM;
+  const free = (u, v, pondM, pathM) => insidePark(u, v, 3) && !inParkPlaza(u, v, 2) && distToPond(u, v) > pondM && distToParkPath(u, v) > pathM && Math.hypot(u - STATUE.u, v - STATUE.v) > STATUE.half + 3;
   const wx = (u) => u + PARK_CX;
   const clumps = [];
   for (let tries = 0; tries < 1200 && clumps.length < 26; tries++) {

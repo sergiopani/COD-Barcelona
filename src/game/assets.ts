@@ -10,6 +10,7 @@ export const ASSETS = {
   sagradaFamiliaGlb: assetUrl("assets/buildings/sagrada-familia.glb"),
   palmGlb: assetUrl("assets/props/palm-tree.glb"),
   carPackGlb: assetUrl("assets/props/car-pack.glb"),
+  doraemonGlb: assetUrl("assets/props/doraemon.glb"),
   rifleGlb: assetUrl("assets/weapons/m1a-springfield.glb"),
   sagradaFamiliaConfig: assetUrl("assets/buildings/sagrada-familia.config.json"),
   envEnv: assetUrl("assets/env/environment.env"),

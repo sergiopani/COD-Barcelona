@@ -441,11 +441,16 @@ export interface ParkBush {
   tint: number;
 }
 export const parkBushes: ParkBush[] = [];
+/**
+ * Estatua de Doraemon (Statue.ts): el hueco de césped más cercano al centro del parque con ≥ 6,5 m de margen al estanque y a los caminos
+ * (el centro exacto, u = v = 0, cae dentro del estanque). `half` = semilado del pedestal; `yaw` = giro de la figura (rad).
+ */
+export const STATUE = { u: -18, v: 0, half: 3.6, yaw: Math.PI / 2 };
 
 {
   const prng = new Rng(20260705);
   const free = (u: number, v: number, pondM: number, pathM: number): boolean =>
-    insidePark(u, v, 3) && !inParkPlaza(u, v, 2) && distToPond(u, v) > pondM && distToParkPath(u, v) > pathM;
+    insidePark(u, v, 3) && !inParkPlaza(u, v, 2) && distToPond(u, v) > pondM && distToParkPath(u, v) > pathM && Math.hypot(u - STATUE.u, v - STATUE.v) > STATUE.half + 3;
   const wx = (u: number) => u + PARK_CX;
 
   // Sin árboles: solo arbustos BAJOS (≤ 1,3 m, por debajo de la vista) para que se vea la basílica desde todo el parque. Van en macizos
