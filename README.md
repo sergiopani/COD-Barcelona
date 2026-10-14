@@ -97,7 +97,7 @@ __game.tp(x, z, yawGrados) // teletransporte para inspeccionar zonas
 
 - La geometría urbana es una **aproximación** (ver `docs/MAPA.md`); no se ha podido contrastar con datos geográficos.
 - La basílica provisional es esquemática; el modelo real se carga desde el GLB.
-- El interior de la manzana de la basílica no es transitable (verja con colisión). Al oeste hay un segundo recinto, el parque de la Plaça de Gaudí, sí transitable (ver `docs/MAPA.md`).
+- El interior de la manzana de la basílica no es transitable (verja con colisión). Al oeste hay un segundo recinto, un parque con el modelo aportado (`npm run build:park`), sí transitable (ver `docs/MAPA.md`).
 - Texturas 100 % procedurales; sustituibles más adelante por texturas PBR reales.
 - El bundle de Babylon (~7,6 MB, 1,7 MB gzip) aún no está optimizado con imports profundos (Fase 4/5).
 

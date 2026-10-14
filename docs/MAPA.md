@@ -24,18 +24,19 @@
 | Altura de edificios | 20–27 m (PB 4,6 + entresuelo 3,0 + principal 3,9 + 2–4 plantas + ático) | Estimación |
 | Calles salientes | 45 m, cerradas con fachadas de remate | Decisión de diseño (mapa compacto) |
 
-## El parque (Plaça de Gaudí) y la calle oeste
+## El parque y la calle oeste
 
-Al **oeste** de la basílica hay una segunda manzana: el parque de la Plaça de Gaudí (en la realidad, frente a la fachada de la Pasión). Es la manzana de la
-basílica trasladada un paso de cuadrícula (`PARK_CX = −133`), con el mismo octógono de chaflanes. Contiene (`ParkBlock.ts` + datos en `mapLayout.ts`):
-- césped, caminos de gravilla (un anillo alrededor del estanque y tres radios) y una explanada de baldosa junto a la basílica;
-- el **estanque** (~46 × 50 m, contorno irregular, desplazado al este del centro como en la fotogrametría) con borde de piedra sólido (0,5 m; se puede saltar al agua, poco profunda) y reflejo del cielo;
-- 30 palmeras, ~90 arbustos, bancos mirando al agua, farolas y papeleras.
+Al **oeste** de la basílica hay una segunda manzana: un parque (la Plaça de Gaudí en la realidad) que es la manzana de la basílica trasladada un paso de cuadrícula
+(`PARK_CX = −133`), con el mismo octógono de chaflanes. Su contenido es **el modelo aportado por el usuario** (`assets-src/park/park.glb`, fuera de git):
+`npm run build:park` (`scripts/build-park.mjs`) lo centra en la manzana, escala los árboles ×1,8 (en el modelo miden 4,7 m), descarta los que caen fuera del
+parque o sobre el camino (137 de 159 se conservan), funde la geometría por material y genera `public/assets/park/{park.glb, park.json, grass_*.webp}`
+(3 MB; `park.json` lleva las colisiones: 12 farolas, 10 bancos —cobertura—, 10 papeleras y un tronco por árbol).
+`ParkBlock.ts` lo carga sobre un suelo de césped a la altura de las aceras. El modelo trae: camino curvo de adoquín de 4 m con borde de piedra, farolas, bancos de madera,
+papeleras y árboles de cartulinas cruzadas con foto. Es un parque sencillo: el camino y el arbolado ocupan unos 95 × 70 m y el resto es césped.
 
 Consecuencias en el mapa: desaparece la manzana lateral oeste (su sitio lo ocupa el parque); las manzanas NO y SO se alargan hasta el borde oeste del parque;
 las calles transversales (z = ±66,5) siguen hasta `x = −199,5`, donde cruza una calle norte-sur cerrada al norte/sur por dos remates y al oeste por una
 **fachada continua** (`WEST_WALL = −209,5`). El mundo jugable es por tanto rectangular (`WORLD` en `config.ts`: x ∈ [−217,5; 134]). Se añadieron 2 puntos de aparición en la calle oeste.
-Medidas del estanque/posición tomadas a ojo de la fotogrametría; árboles, arbustos y caminos son una recreación, no un plano real.
 
 ## Aproximado / inventado
 

@@ -14,7 +14,7 @@ import { loadSagradaFamilia, type SagradaResult } from "./SagradaFamiliaLoader";
 import { buildProps } from "./StreetFurniture";
 import { loadVehicles, type VehicleLibrary } from "./VehicleSet";
 import { buildStreets, type StreetBuild } from "./StreetGenerator";
-import { buildPark } from "./ParkBlock";
+import { buildPark, type ParkBuild } from "./ParkBlock";
 import { buildingChains, centerChain, crosswalkRect, crosswalks, props, spawns, type Spawn } from "./mapLayout";
 
 export interface MapStats {
@@ -38,6 +38,7 @@ export class BarcelonaMap {
   materials!: MaterialSet;
   sagrada!: SagradaResult;
   private palms: PalmSet | null = null;
+  private park: ParkBuild | null = null;
   private vehicles: VehicleLibrary | null = null;
   private streets!: StreetBuild;
   private wetSet: WetSet | null = null;
@@ -64,7 +65,8 @@ export class BarcelonaMap {
     const streets = buildStreets(this.scene, mats, this.collisions);
     this.streets = streets;
     this.meshes.push(...streets.meshes);
-    this.meshes.push(...buildPark(this.scene, mats, this.collisions).meshes);
+    this.park = await buildPark(this.scene, mats, this.collisions);
+    this.meshes.push(...this.park.meshes);
 
     await tick("Levantando edificios del Eixample…");
     await loadBatlloRelief();
@@ -206,6 +208,7 @@ export class BarcelonaMap {
 
   dispose(): void {
     this.sagrada?.dispose();
+    this.park?.dispose();
     this.palms?.dispose();
     this.vehicles?.dispose();
     this.meshes.forEach((m) => m.dispose());
